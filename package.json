@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node src/app.js",
     "dev": "node --watch src/app.js",
-    "test": "node test/test-api.js"
+    "test": "NODE_ENV=test node test/test-api.js"
   },
   "keywords": [
     "campuslands",
