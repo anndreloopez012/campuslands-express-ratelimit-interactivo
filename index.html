@@ -1,0 +1,3557 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Express Rate Limit & Middlewares (API Videojuegos) | Guía Interactiva • Campuslands</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-surface: #0f1523;
+      --bg-card: #151d30;
+      --bg-code: #1e1e1e; /* Color oficial VS Code Dark+ */
+      --border-subtle: #1e293b;
+      --border-accent: rgba(56, 189, 248, 0.35);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --node-green: #22c55e;
+      --node-green-glow: rgba(34, 197, 94, 0.25);
+      --campus-cyan: #38bdf8;
+      --campus-purple: #a855f7;
+      --campus-amber: #f59e0b;
+      --campus-red: #ef4444;
+      --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+      --transition-speed: 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+
+    /* Header Superior */
+    header.deck-header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 64px;
+      background: rgba(15, 21, 35, 0.94);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1.5rem;
+      z-index: 100;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+    }
+
+    .brand-badge {
+      background: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
+      color: #050a14;
+      font-weight: 800;
+      font-size: 0.75rem;
+      padding: 0.28rem 0.65rem;
+      border-radius: 6px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+    }
+
+    .brand-title {
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .brand-sub {
+      color: var(--text-muted);
+      font-weight: 400;
+      font-size: 0.85rem;
+      display: none;
+    }
+
+    @media (min-width: 768px) {
+      .brand-sub { display: inline; }
+    }
+
+    .nav-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+    }
+
+    .btn-action {
+      background: var(--bg-card);
+      color: var(--text-main);
+      border: 1px solid var(--border-subtle);
+      padding: 0.45rem 0.85rem;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all var(--transition-speed);
+      font-family: inherit;
+      text-decoration: none;
+    }
+
+    .btn-action:hover {
+      background: #1e293b;
+      border-color: var(--campus-cyan);
+      color: #fff;
+      transform: translateY(-1px);
+    }
+
+    .progress-bar-container {
+      position: fixed;
+      top: 64px;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.05);
+      z-index: 99;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 9%;
+      background: linear-gradient(90deg, var(--node-green), var(--campus-cyan));
+      box-shadow: 0 0 10px var(--node-green-glow);
+      transition: width 0.3s ease;
+    }
+
+    /* Contenedor Principal */
+    main.presentation-wrapper {
+      margin-top: 68px;
+      margin-bottom: 90px;
+      min-height: calc(100vh - 158px);
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 1.5rem;
+      position: relative;
+    }
+
+    /* Modo Diapositivas */
+    body.mode-slides .slide-item {
+      display: none;
+      width: 100%;
+      max-width: 1280px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 20px;
+      padding: 2.5rem;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.75);
+      animation: fadeInSlide 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      position: relative;
+    }
+
+    body.mode-slides .slide-item.active {
+      display: block;
+    }
+
+    /* Modo Documento Continuo */
+    body.mode-doc main.presentation-wrapper {
+      display: block;
+      max-width: 1200px;
+      margin: 80px auto 40px auto;
+      padding: 1rem;
+    }
+
+    body.mode-doc .slide-item {
+      display: block;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 18px;
+      padding: 2.5rem;
+      margin-bottom: 2.5rem;
+      box-shadow: 0 12px 36px rgba(0,0,0,0.35);
+    }
+
+    body.mode-doc .slide-nav-dock {
+      display: none;
+    }
+
+    @keyframes fadeInSlide {
+      from {
+        opacity: 0;
+        transform: translateY(14px) scale(0.985);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    /* Insignias y Tipografía */
+    .slide-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0.3rem 0.8rem;
+      border-radius: 9999px;
+      background: rgba(34, 197, 94, 0.12);
+      color: var(--node-green);
+      border: 1px solid rgba(34, 197, 94, 0.25);
+      margin-bottom: 1.25rem;
+    }
+
+    .slide-badge.cyan {
+      background: rgba(56, 189, 248, 0.12);
+      color: var(--campus-cyan);
+      border-color: rgba(56, 189, 248, 0.25);
+    }
+
+    .slide-badge.purple {
+      background: rgba(168, 85, 247, 0.12);
+      color: var(--campus-purple);
+      border-color: rgba(168, 85, 247, 0.25);
+    }
+
+    .slide-badge.amber {
+      background: rgba(245, 158, 11, 0.12);
+      color: var(--campus-amber);
+      border-color: rgba(245, 158, 11, 0.25);
+    }
+
+    .slide-badge.red {
+      background: rgba(239, 68, 68, 0.12);
+      color: #f87171;
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+
+    .slide-title {
+      font-size: 2.15rem;
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 1rem;
+      letter-spacing: -0.025em;
+      background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .slide-desc {
+      font-size: 1.03rem;
+      color: var(--text-muted);
+      margin-bottom: 1.75rem;
+      max-width: 1040px;
+    }
+
+    /* Grillas y Cajas */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+      margin: 1.25rem 0;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.25rem;
+      margin: 1.25rem 0;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.15rem;
+      margin: 1.25rem 0;
+    }
+
+    @media (min-width: 768px) {
+      .grid-2 { grid-template-columns: repeat(2, 1fr); }
+      .grid-3 { grid-template-columns: repeat(3, 1fr); }
+      .grid-4 { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (min-width: 1024px) {
+      .grid-4 { grid-template-columns: repeat(4, 1fr); }
+    }
+
+    .card-info {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 1.4rem;
+      position: relative;
+      transition: all var(--transition-speed);
+    }
+
+    .card-info:hover {
+      border-color: var(--border-accent);
+      transform: translateY(-2px);
+    }
+
+    .card-info.accent-green { border-left: 4px solid var(--node-green); }
+    .card-info.accent-cyan { border-left: 4px solid var(--campus-cyan); }
+    .card-info.accent-purple { border-left: 4px solid var(--campus-purple); }
+    .card-info.accent-amber { border-left: 4px solid var(--campus-amber); }
+    .card-info.accent-red { border-left: 4px solid var(--campus-red); }
+
+    .card-title {
+      font-size: 1.08rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 0.55rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    .card-text {
+      color: var(--text-muted);
+      font-size: 0.91rem;
+      line-height: 1.6;
+    }
+
+    /* Bloques de Terminal con Botón de Copiado */
+    .terminal-box {
+      background: #060910;
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      margin: 0.85rem 0;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      position: relative;
+      color: #38bdf8;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .terminal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.6rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 0.72rem;
+      color: var(--text-dim);
+    }
+
+    .btn-copy {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: var(--text-muted);
+      font-size: 0.72rem;
+      padding: 0.25rem 0.65rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+
+    .btn-copy:hover {
+      background: var(--campus-cyan);
+      color: #050a14;
+      font-weight: 700;
+    }
+
+    /* Diagrama Redibujado en Alta Definición del Embudo y Tokens */
+    .diagram-stage {
+      background: #080d1a;
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      padding: 1.75rem;
+      margin: 1.25rem 0;
+    }
+
+    .token-diagram-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+      align-items: center;
+      margin-top: 1rem;
+    }
+
+    @media (min-width: 960px) {
+      .token-diagram-grid {
+        grid-template-columns: 240px 1fr 280px;
+      }
+    }
+
+    .client-node {
+      background: var(--bg-card);
+      border: 2px solid var(--node-green);
+      border-radius: 16px;
+      padding: 1.5rem 1rem;
+      text-align: center;
+      box-shadow: 0 0 25px rgba(34, 197, 94, 0.15);
+    }
+
+    .arrows-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+    }
+
+    .req-arrow-row {
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      padding: 0.75rem 1.15rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .req-arrow-row.ok {
+      border-left: 4px solid var(--node-green);
+    }
+
+    .req-arrow-row.blocked {
+      border-left: 4px solid var(--campus-red);
+      background: rgba(239, 68, 68, 0.07);
+    }
+
+    .req-arrow-row.highlight-step {
+      transform: scale(1.02);
+      box-shadow: 0 0 20px rgba(56, 189, 248, 0.35);
+      border-color: var(--campus-cyan);
+    }
+
+    .req-time {
+      font-family: var(--font-mono);
+      font-weight: 800;
+      font-size: 0.95rem;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      min-width: 115px;
+    }
+
+    .req-track {
+      flex: 1;
+      text-align: center;
+    }
+
+    .req-track-line {
+      height: 6px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(34,197,94,0.3), var(--node-green));
+      position: relative;
+      margin: 0.35rem 0;
+    }
+
+    .req-arrow-row.blocked .req-track-line {
+      background: linear-gradient(90deg, rgba(239,68,68,0.3), var(--campus-red));
+    }
+
+    .req-sub {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #4ade80;
+    }
+
+    .req-arrow-row.blocked .req-sub {
+      color: #f87171;
+    }
+
+    .funnel-node {
+      background: var(--bg-card);
+      border: 2px solid var(--campus-cyan);
+      border-radius: 16px;
+      padding: 1.5rem 1rem;
+      text-align: center;
+      box-shadow: 0 0 25px rgba(56, 189, 248, 0.15);
+    }
+
+    /* Tablas Didácticas */
+    .table-wrap {
+      overflow-x: auto;
+      border-radius: 12px;
+      border: 1px solid var(--border-subtle);
+      margin: 1rem 0;
+    }
+
+    .table-custom {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--bg-card);
+    }
+
+    .table-custom th, .table-custom td {
+      padding: 0.85rem 1.1rem;
+      text-align: left;
+      font-size: 0.87rem;
+      vertical-align: top;
+    }
+
+    .table-custom th {
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-main);
+      font-weight: 700;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .table-custom tr:not(:last-child) td {
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .table-custom tr:hover td {
+      background: rgba(255, 255, 255, 0.025);
+    }
+
+    .opt-link {
+      color: var(--campus-cyan);
+      font-family: var(--font-mono);
+      font-weight: 700;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .opt-link:hover {
+      text-decoration: underline;
+      color: #7dd3fc;
+    }
+
+    .opt-type {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+      padding: 0.18rem 0.5rem;
+      border-radius: 6px;
+      background: rgba(168, 85, 247, 0.15);
+      color: #d8b4fe;
+      border: 1px solid rgba(168, 85, 247, 0.3);
+      white-space: nowrap;
+    }
+
+    .badge-method {
+      display: inline-block;
+      padding: 0.2rem 0.55rem;
+      border-radius: 6px;
+      font-weight: 800;
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+    }
+
+    .badge-method.get { background: rgba(34, 197, 94, 0.2); color: var(--node-green); border: 1px solid var(--node-green); }
+    .badge-method.post { background: rgba(56, 189, 248, 0.2); color: var(--campus-cyan); border: 1px solid var(--campus-cyan); }
+    .badge-method.put { background: rgba(245, 158, 11, 0.2); color: var(--campus-amber); border: 1px solid var(--campus-amber); }
+    .badge-method.delete { background: rgba(239, 68, 68, 0.2); color: var(--campus-red); border: 1px solid var(--campus-red); }
+
+    .badge-status {
+      display: inline-block;
+      padding: 0.18rem 0.55rem;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+    }
+
+    .badge-status.s200 { background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
+    .badge-status.s201 { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
+    .badge-status.s400 { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
+    .badge-status.s404 { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+    .badge-status.s429 { background: rgba(239, 68, 68, 0.25); color: #fca5a5; border: 1px solid #ef4444; box-shadow: 0 0 12px rgba(239,68,68,0.35); }
+
+    /* ========================================================= */
+    /* VENTANAS DE CÓDIGO ESTILO VS CODE DARK+ (SIN CORTAR)      */
+    /* ========================================================= */
+    .vscode-window {
+      background: #1e1e1e;
+      border: 1px solid #333333;
+      border-radius: 12px;
+      overflow: hidden;
+      margin: 1.25rem 0;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.65);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .vscode-titlebar {
+      background: #252526;
+      border-bottom: 1px solid #1e1e1e;
+      padding: 0.55rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: #cccccc;
+    }
+
+    .vscode-dots {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+
+    .vscode-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+    }
+    .vscode-dot.red { background: #ff5f56; }
+    .vscode-dot.yellow { background: #ffbd2e; }
+    .vscode-dot.green { background: #27c93f; }
+
+    /* Pestañas superiores estilo VS Code */
+    .vscode-tabs-bar {
+      display: flex;
+      background: #252526;
+      overflow-x: auto;
+      border-bottom: 1px solid #1e1e1e;
+      scrollbar-width: none;
+    }
+    .vscode-tabs-bar::-webkit-scrollbar { display: none; }
+
+    .vscode-tab {
+      background: #2d2d2d;
+      color: #969696;
+      border: none;
+      border-right: 1px solid #1e1e1e;
+      border-top: 2px solid transparent;
+      padding: 0.6rem 1.05rem;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+
+    .vscode-tab:hover {
+      background: #323232;
+      color: #ffffff;
+    }
+
+    .vscode-tab.active {
+      background: #1e1e1e;
+      color: #ffffff;
+      border-top: 2px solid #007acc;
+      font-weight: 600;
+    }
+
+    .tab-icon-js {
+      color: #f7df1e;
+      font-weight: 900;
+      font-size: 0.72rem;
+      background: #323330;
+      padding: 0.1rem 0.25rem;
+      border-radius: 3px;
+    }
+
+    /* Barra de ruta (Breadcrumbs) */
+    .vscode-breadcrumbs {
+      background: #1e1e1e;
+      border-bottom: 1px solid #2d2d2d;
+      padding: 0.35rem 1rem;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: #858585;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.4rem;
+    }
+
+    .vscode-breadcrumbs span.active-crumb {
+      color: #cccccc;
+    }
+
+    /* Área Dividida: Código Fuente Completo vs Panel Explicativo */
+    .vscode-body {
+      display: grid;
+      grid-template-columns: 1fr;
+      align-items: start;
+    }
+
+    @media (min-width: 980px) {
+      .vscode-body {
+        grid-template-columns: 1.5fr 1fr;
+      }
+    }
+
+    /* Editor de código SIN recorte vertical: siempre se ve todo el código */
+    .vscode-editor {
+      background: #1e1e1e;
+      padding: 0.75rem 0;
+      font-family: var(--font-mono);
+      font-size: 0.83rem;
+      border-right: 1px solid #2d2d2d;
+      width: 100%;
+    }
+
+    .vscode-static-code {
+      background: #1e1e1e;
+      padding: 0.75rem 0;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      width: 100%;
+    }
+
+    /* Fila de código con Salto de Línea y Wrap automático (NUNCA SE COME LAS LÍNEAS) */
+    .code-row {
+      display: flex;
+      align-items: baseline;
+      padding: 0.16rem 0.75rem;
+      cursor: pointer;
+      transition: background 0.1s ease;
+      line-height: 1.55;
+    }
+
+    .vscode-static-code .code-row {
+      cursor: default;
+    }
+
+    .code-row:hover {
+      background: #2a2d2e;
+    }
+
+    .code-row.active {
+      background: #282e3a;
+      box-shadow: inset 3px 0 0 #007acc;
+    }
+
+    .code-ln {
+      color: #6e7681;
+      width: 2.5rem;
+      text-align: right;
+      flex-shrink: 0;
+      user-select: none;
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+      margin-right: 1.1rem;
+    }
+
+    .code-text {
+      flex: 1;
+      white-space: pre-wrap; /* Salto de línea automático si hace falta */
+      word-break: break-word; /* Nunca corta ni oculta código */
+      overflow-wrap: anywhere;
+      color: #d4d4d4;
+    }
+
+    /* Panel lateral de explicación */
+    .vscode-inspector {
+      background: #252526;
+      padding: 1.65rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.15rem;
+      border-left: 1px solid #1e1e1e;
+      position: sticky;
+      top: 76px;
+    }
+
+    .detail-badge {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 0.74rem;
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.12);
+      padding: 0.25rem 0.65rem;
+      border-radius: 6px;
+      align-self: flex-start;
+      border: 1px solid rgba(56, 189, 248, 0.25);
+    }
+
+    .detail-heading {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #ffffff;
+      line-height: 1.3;
+    }
+
+    .detail-body {
+      font-size: 0.91rem;
+      color: #cccccc;
+      line-height: 1.65;
+    }
+
+    .detail-box-tip {
+      background: rgba(34, 197, 94, 0.08);
+      border: 1px solid rgba(34, 197, 94, 0.25);
+      border-radius: 8px;
+      padding: 0.9rem 1rem;
+      font-size: 0.85rem;
+      color: #bbf7d0;
+    }
+
+    /* Paleta de Sintaxis VS Code Dark+ */
+    .hl-kw { color: #c586c0; font-weight: 600; }
+    .hl-type { color: #4ec9b0; }
+    .hl-fn { color: #dcdcaa; }
+    .hl-str { color: #ce9178; }
+    .hl-num { color: #b5cea8; }
+    .hl-param { color: #9cdcfe; }
+    .hl-cmt { color: #6a9955; font-style: italic; }
+    .hl-op { color: #d4d4d4; }
+    .hl-punc { color: #ffd700; }
+
+    /* Simulador REST + Rate Limiter Interactivo (Sandbox) */
+    .sandbox-container {
+      background: #0b0f19;
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      padding: 1.65rem;
+      margin: 1.25rem 0;
+      display: flex;
+      flex-direction: column;
+      gap: 1.35rem;
+    }
+
+    .ratelimit-hud {
+      background: #111827;
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 1.15rem 1.35rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .token-pills {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      flex-wrap: wrap;
+    }
+
+    .token-pill {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 0.8rem;
+      background: rgba(34, 197, 94, 0.2);
+      border: 1px solid var(--node-green);
+      color: #4ade80;
+      transition: all 0.25s ease;
+    }
+
+    .token-pill.spent {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #f87171;
+      opacity: 0.45;
+    }
+
+    .sandbox-preset-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .btn-preset {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      padding: 0.45rem 0.85rem;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all var(--transition-speed);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .btn-preset:hover {
+      border-color: var(--campus-cyan);
+      transform: translateY(-1px);
+    }
+
+    .sandbox-url-bar {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    @media (min-width: 640px) {
+      .sandbox-url-bar {
+        flex-direction: row;
+        align-items: center;
+      }
+    }
+
+    .select-method {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      color: #fff;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      padding: 0.65rem 1rem;
+      border-radius: 8px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .input-url {
+      flex: 1;
+      background: #050811;
+      border: 1px solid var(--border-subtle);
+      color: #fff;
+      font-family: var(--font-mono);
+      padding: 0.65rem 1rem;
+      border-radius: 8px;
+      outline: none;
+    }
+
+    .btn-send {
+      background: linear-gradient(135deg, #10b981, #06b6d4);
+      color: #050a14;
+      border: none;
+      font-weight: 800;
+      padding: 0.65rem 1.4rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all var(--transition-speed);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .btn-send:hover {
+      box-shadow: 0 0 18px rgba(16, 185, 129, 0.4);
+      transform: translateY(-1px);
+    }
+
+    .sandbox-panels {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.25rem;
+    }
+
+    @media (min-width: 900px) {
+      .sandbox-panels {
+        grid-template-columns: 1fr 1.25fr;
+      }
+    }
+
+    .sandbox-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .sandbox-box-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 700;
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      padding-bottom: 0.5rem;
+    }
+
+    .textarea-body {
+      width: 100%;
+      height: 135px;
+      background: #060910;
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      color: #e2e8f0;
+      font-family: var(--font-mono);
+      font-size: 0.84rem;
+      padding: 0.75rem;
+      outline: none;
+      resize: vertical;
+    }
+
+    .output-json {
+      background: #050811;
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 0.85rem;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      color: #38bdf8;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .headers-preview {
+      background: #080c16;
+      border: 1px dashed #334155;
+      border-radius: 8px;
+      padding: 0.65rem 0.85rem;
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+      color: #cbd5e1;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.85rem;
+    }
+
+    /* Barra de Navegación Inferior Flotante */
+    .slide-nav-dock {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 21, 35, 0.92);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border-subtle);
+      border-radius: 9999px;
+      padding: 0.5rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      z-index: 90;
+    }
+
+    .dock-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      color: #fff;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all var(--transition-speed);
+      font-weight: 800;
+    }
+
+    .dock-btn:hover:not(:disabled) {
+      background: var(--campus-cyan);
+      color: #050a14;
+      transform: scale(1.05);
+    }
+
+    .dock-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    .dock-counter {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      min-width: 74px;
+      text-align: center;
+    }
+
+    /* Modal de Tabla de Contenidos (TOC) */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(6px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      padding: 1.5rem;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 20px;
+      max-width: 720px;
+      width: 100%;
+      max-height: 85vh;
+      overflow-y: auto;
+      padding: 2rem;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.8);
+      position: relative;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border-subtle);
+      padding-bottom: 0.75rem;
+    }
+
+    .modal-title {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .btn-close-modal {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.5rem;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .toc-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .toc-item {
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      background: var(--bg-card);
+      border: 1px solid transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all var(--transition-speed);
+    }
+
+    .toc-item:hover {
+      border-color: var(--campus-cyan);
+      background: #1e293b;
+      transform: translateX(4px);
+    }
+
+    .toc-item.current {
+      border-color: var(--node-green);
+      background: rgba(34, 197, 94, 0.1);
+    }
+
+    .toc-num {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: var(--campus-cyan);
+      font-size: 0.85rem;
+      margin-right: 0.75rem;
+    }
+
+    /* Buscador de Opciones */
+    .input-search {
+      width: 100%;
+      max-width: 440px;
+      background: #060911;
+      border: 1px solid var(--border-subtle);
+      color: #fff;
+      padding: 0.6rem 1rem;
+      border-radius: 8px;
+      font-family: var(--font-sans);
+      font-size: 0.88rem;
+      outline: none;
+    }
+    .input-search:focus {
+      border-color: var(--campus-cyan);
+    }
+
+    /* Notificación Toast */
+    .toast-msg {
+      position: fixed;
+      bottom: 80px;
+      right: 25px;
+      background: #10b981;
+      color: #050a14;
+      padding: 0.65rem 1.25rem;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+      display: none;
+      z-index: 300;
+    }
+  </style>
+</head>
+<body class="mode-slides">
+
+  <!-- Header Superior -->
+  <header class="deck-header">
+    <div class="brand-wrap">
+      <span class="brand-badge">Campuslands</span>
+      <div class="brand-title">
+        <span>express-rate-limit & Middlewares</span>
+        <span class="brand-sub">• Ejercicio Completo de Videojuegos en Node.js (ESM)</span>
+      </div>
+    </div>
+    <div class="nav-controls">
+      <button id="btnToggleMode" class="btn-action" title="Alternar entre Diapositivas y Documento Completo (Tecla M)">
+        <span id="modeIcon">📖</span>
+        <span id="modeLabel">Modo Lectura</span>
+      </button>
+      <button id="btnOpenTOC" class="btn-action" title="Abrir Índice Temático (Tecla T)">
+        <span>📑</span>
+        <span>Índice</span>
+      </button>
+      <a href="https://github.com/anndreloopez012/campuslands-express-ratelimit-interactivo" target="_blank" class="btn-action" title="Ver repositorio en GitHub">
+        <span>🐙</span>
+        <span>GitHub</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- Barra de Progreso -->
+  <div class="progress-bar-container">
+    <div id="progressBar" class="progress-bar"></div>
+  </div>
+
+  <!-- Contenedor Principal de Diapositivas -->
+  <main class="presentation-wrapper">
+
+    <!-- =================================================================== -->
+    <!-- SLIDE 1: 1. Introducción a express-rate-limit                       -->
+    <!-- =================================================================== -->
+    <section class="slide-item active" data-step="1">
+      <span class="slide-badge">🛡️ 1. Introducción • Seguridad en Express.js</span>
+      <h1 class="slide-title">Limitación de Tasa con express-rate-limit y Middlewares</h1>
+      <p class="slide-desc">
+        <strong><code>express-rate-limit</code></strong> es un middleware para <strong>Express</strong> (el popular framework de Node.js para construir aplicaciones web y APIs). Se utiliza para <strong>limitar la tasa de solicitudes</strong> que un cliente puede realizar a nuestra aplicación, protegiendo nuestro servidor de <strong>Videojuegos</strong> frente a ataques de denegación de servicio (<strong>DoS</strong>) y abuso de tráfico.
+      </p>
+
+      <div class="grid-2">
+        <div class="card-info accent-green">
+          <div class="card-title">¿Cómo protege nuestra API de Videojuegos?</div>
+          <div class="card-text">
+            Cuando usas <code>express-rate-limit</code>, configuras el número máximo de solicitudes permitidas dentro de una ventana de tiempo (por ejemplo, <strong>100 solicitudes por hora</strong> o <strong>5 solicitudes por minuto</strong> por dirección IP).<br><br>
+            Si un jugador o bot supera ese límite, el middleware intercepta la petición antes de que llegue al arreglo en memoria y responde automáticamente con el código de estado HTTP <strong><span class="badge-status s429">429 Too Many Requests</span></strong> (Demasiadas solicitudes), indicando que debe esperar antes de volver a intentar.
+          </div>
+          <div style="margin-top: 1rem; display: flex; flex-wrap: wrap; gap: 0.6rem;">
+            <a href="https://www.npmjs.com/package/express-rate-limit" target="_blank" class="btn-action" style="border-color: var(--node-green); color: #4ade80;">
+              📦 Documentación Oficial en NPM (express-rate-limit) ↗
+            </a>
+            <a href="https://express-rate-limit.mintlify.app/reference/configuration" target="_blank" class="btn-action">
+              📘 Guía de Configuración Mintlify ↗
+            </a>
+          </div>
+        </div>
+
+        <div class="card-info accent-cyan" style="display: flex; flex-direction: column; justify-content: space-between;">
+          <div class="card-title">
+            <span>🖼️ Arquitectura de Seguridad REST API en Node.js</span>
+            <a href="https://bs-uploads.toptal.io/blackfish-uploads/components/seo/content/og_image_file/og_image/1302192/secure-rest-api-in-nodejs-18f43b3033c239da5d2525cfd9fdc98f.png" target="_blank" style="font-size: 0.74rem; color: var(--campus-cyan); text-decoration: none;">Fuente original ↗</a>
+          </div>
+          <div style="background: #080d1a; border: 1px solid var(--border-subtle); border-radius: 10px; overflow: hidden; margin: 0.4rem 0;">
+            <img src="https://bs-uploads.toptal.io/blackfish-uploads/components/seo/content/og_image_file/og_image/1302192/secure-rest-api-in-nodejs-18f43b3033c239da5d2525cfd9fdc98f.png" alt="Secure REST API in Node.js" style="width: 100%; max-height: 195px; object-fit: cover; display: block;" onerror="this.style.display='none'">
+          </div>
+          <div class="card-text" style="font-size: 0.84rem;">
+            En este ejercicio práctico construiremos paso a paso una <strong>API REST de Videojuegos</strong> que almacena sus datos en un <strong>arreglo en memoria</strong> (sin base de datos externa) y aplica <code>express-rate-limit</code> como middleware.
+          </div>
+        </div>
+      </div>
+
+      <div class="card-info accent-amber" style="margin-top: 1.25rem;">
+        <div class="card-title">💡 Navegación de la Plataforma Interactiva</div>
+        <div class="card-text">
+          • Usa las flechas <strong>←</strong> y <strong>→</strong> del teclado (o los botones inferiores) para avanzar por los 11 pasos.<br>
+          • Presiona <strong>M</strong> para alternar entre <strong>Modo Diapositivas</strong> y <strong>Modo Lectura Completa</strong>.<br>
+          • Todo el código tiene el diseño oficial de <strong>VS Code Dark+</strong> con salto de línea automático (wrap) para que <strong>jamás se corte ni se oculte ninguna línea</strong>.
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- SLIDE 2: Diagrama Nítido del Embudo y Conteo de Tokens              -->
+    <!-- =================================================================== -->
+    <section class="slide-item" data-step="2">
+      <span class="slide-badge cyan">⏱️ Visualización Paso a Paso • Cómo Opera el Límite</span>
+      <h2 class="slide-title">¿Cómo Funciona el Descuento de Tokens y el Embudo HTTP?</h2>
+      <p class="slide-desc">
+        Hemos reconstruido el diagrama del funcionamiento de <code>express-rate-limit</code> en alta definición e interactivo para que cada marca de tiempo y transición de tokens se lea con total claridad. Imagina que configuramos <strong><code>max: 3</code></strong> solicitudes por minuto (<strong>Contador inicial de tokens = 3</strong>):
+      </p>
+
+      <div class="diagram-stage">
+        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+          <div style="font-weight: 700; color: var(--campus-cyan); font-size: 0.95rem;">
+            🎯 Flujo de Peticiones con Ventana de 1 Minuto (Initial Token Count = 3)
+          </div>
+          <div style="display: flex; gap: 0.6rem; flex-wrap: wrap;">
+            <button class="btn-action" style="border-color: var(--node-green); color: #4ade80;" onclick="animarDiagramaTokens()">
+              ▶️ Simular Paso a Paso el Reloj (03:01:00 → 03:01:55)
+            </button>
+            <button class="btn-action" onclick="toggleOriginalDiagram()">
+              🖼️ Ver / Ocultar Dibujo Original
+            </button>
+          </div>
+        </div>
+
+        <div class="token-diagram-grid">
+          <!-- Columna 1: Cliente / Gamer -->
+          <div class="client-node">
+            <div style="font-size: 0.82rem; font-weight: 800; color: #4ade80; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">
+              Initial token count is 3
+            </div>
+            <div style="font-size: 3.2rem; line-height: 1; margin: 0.6rem 0;">🧑‍💻🎮</div>
+            <div style="font-weight: 800; color: #fff; font-size: 1rem;">Cliente (IP Jugador)</div>
+            <div style="font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-muted); margin-top: 0.35rem;">
+              IP: 192.168.1.42
+            </div>
+            <div id="diagClientBadge" style="margin-top: 0.85rem; background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.4); color: #4ade80; padding: 0.35rem 0.6rem; border-radius: 8px; font-family: var(--font-mono); font-size: 0.8rem; font-weight: 700;">
+              Tokens actuales: 3 / 3
+            </div>
+          </div>
+
+          <!-- Columna 2: Las 4 Solicitudes en el Tiempo -->
+          <div class="arrows-stack">
+            <div class="req-arrow-row ok" id="diagRow1">
+              <div class="req-time">
+                <span>03:01:00</span>
+                <span>✅</span>
+              </div>
+              <div class="req-track">
+                <div style="font-size: 0.78rem; color: var(--text-muted);">Petición #1: <code>GET /api/videojuegos</code></div>
+                <div class="req-track-line"></div>
+                <div class="req-sub">Token count reduces to 2 (Quedan 2 tokens)</div>
+              </div>
+              <span class="badge-status s200">200 OK</span>
+            </div>
+
+            <div class="req-arrow-row ok" id="diagRow2">
+              <div class="req-time">
+                <span>03:01:20</span>
+                <span>✅</span>
+              </div>
+              <div class="req-track">
+                <div style="font-size: 0.78rem; color: var(--text-muted);">Petición #2: <code>GET /api/videojuegos/1</code></div>
+                <div class="req-track-line"></div>
+                <div class="req-sub">Token count reduces to 1 (Queda 1 token)</div>
+              </div>
+              <span class="badge-status s200">200 OK</span>
+            </div>
+
+            <div class="req-arrow-row ok" id="diagRow3">
+              <div class="req-time">
+                <span>03:01:40</span>
+                <span>✅</span>
+              </div>
+              <div class="req-track">
+                <div style="font-size: 0.78rem; color: var(--text-muted);">Petición #3: <code>POST /api/videojuegos</code></div>
+                <div class="req-track-line"></div>
+                <div class="req-sub">Token count reduces to 0 (Quedan 0 tokens)</div>
+              </div>
+              <span class="badge-status s201">201 OK</span>
+            </div>
+
+            <div class="req-arrow-row blocked" id="diagRow4">
+              <div class="req-time" style="color: #fca5a5;">
+                <span>03:01:55</span>
+                <span>❌</span>
+              </div>
+              <div class="req-track">
+                <div style="font-size: 0.78rem; color: #fca5a5;">Petición #4: <code>GET /api/videojuegos</code> (Dentro del mismo minuto)</div>
+                <div class="req-track-line"></div>
+                <div class="req-sub">No more token — Bloqueada por express-rate-limit</div>
+              </div>
+              <span class="badge-status s429">429 Stop</span>
+            </div>
+          </div>
+
+          <!-- Columna 3: Embudo Middleware + Servidor -->
+          <div class="funnel-node">
+            <div style="font-size: 0.78rem; font-weight: 800; color: var(--campus-cyan); text-transform: uppercase; letter-spacing: 0.05em;">
+              Middleware Embudo
+            </div>
+            <!-- SVG Vectorial Nítido del Embudo + Servidor -->
+            <svg viewBox="0 0 220 175" style="width: 100%; max-width: 210px; margin: 0.5rem auto; display: block;">
+              <!-- Flechas de entrada al embudo -->
+              <path d="M115 10 L115 32 M110 26 L115 33 L120 26" stroke="#38bdf8" stroke-width="3" fill="none" stroke-linecap="round"/>
+              <path d="M138 10 L138 32 M133 26 L138 33 L143 26" stroke="#38bdf8" stroke-width="3" fill="none" stroke-linecap="round"/>
+              <path d="M161 10 L161 32 M156 26 L161 33 L166 26" stroke="#38bdf8" stroke-width="3" fill="none" stroke-linecap="round"/>
+              <path d="M184 10 L184 32 M179 26 L184 33 L189 26" stroke="#ef4444" stroke-width="3" fill="none" stroke-linecap="round"/>
+              <!-- Servidor Rack a la izquierda -->
+              <rect x="18" y="45" width="90" height="24" rx="5" fill="#1e293b" stroke="#64748b" stroke-width="2.5"/>
+              <circle cx="32" cy="57" r="3" fill="#22c55e"/>
+              <circle cx="44" cy="57" r="3" fill="#38bdf8"/>
+              <line x1="60" y1="57" x2="94" y2="57" stroke="#94a3b8" stroke-width="3" stroke-linecap="round"/>
+
+              <rect x="18" y="75" width="90" height="24" rx="5" fill="#1e293b" stroke="#64748b" stroke-width="2.5"/>
+              <circle cx="32" cy="87" r="3" fill="#22c55e"/>
+              <circle cx="44" cy="87" r="3" fill="#38bdf8"/>
+              <line x1="60" y1="87" x2="94" y2="87" stroke="#94a3b8" stroke-width="3" stroke-linecap="round"/>
+
+              <rect x="18" y="105" width="90" height="24" rx="5" fill="#1e293b" stroke="#64748b" stroke-width="2.5"/>
+              <circle cx="32" cy="117" r="3" fill="#22c55e"/>
+              <circle cx="44" cy="117" r="3" fill="#38bdf8"/>
+              <line x1="60" y1="117" x2="94" y2="117" stroke="#94a3b8" stroke-width="3" stroke-linecap="round"/>
+
+              <!-- Nodo de red inferior del servidor -->
+              <line x1="63" y1="129" x2="63" y2="148" stroke="#64748b" stroke-width="3"/>
+              <line x1="38" y1="148" x2="88" y2="148" stroke="#64748b" stroke-width="3" stroke-linecap="round"/>
+              <circle cx="63" cy="148" r="6" fill="#06b6d4" stroke="#f8fafc" stroke-width="2"/>
+
+              <!-- Embudo (Funnel) de Rate Limit -->
+              <ellipse cx="150" cy="48" rx="46" ry="12" fill="#0e7490" stroke="#38bdf8" stroke-width="2.5"/>
+              <path d="M104 48 L138 98 L138 132 L162 124 L162 98 L196 48 Z" fill="#155e75" stroke="#38bdf8" stroke-width="2.5" stroke-linejoin="round"/>
+              <!-- Flecha de salida controlada -->
+              <path d="M150 138 L150 165 M143 157 L150 166 L157 157" stroke="#22c55e" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+            </svg>
+            <div style="font-weight: 700; color: #fff; font-size: 0.9rem;">Servidor Express + Arreglo</div>
+            <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.25rem;">
+              Solo deja pasar tráfico legítimo dentro del límite configurado
+            </div>
+          </div>
+        </div>
+
+        <!-- Imagen Original Opcional -->
+        <div id="originalDiagramWrap" style="display: none; margin-top: 1.25rem; background: #ffffff; padding: 1rem; border-radius: 12px; text-align: center;">
+          <div style="color: #0f172a; font-weight: 700; font-size: 0.85rem; margin-bottom: 0.5rem;">
+            📌 Imagen de referencia original (Incluida en el repositorio en <code>assets/rate-limit-token-flow.png</code>):
+          </div>
+          <img src="assets/rate-limit-token-flow.png" alt="Diagrama Rate Limit Tokens" style="max-width: 100%; height: auto; max-height: 280px; border-radius: 8px;">
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- SLIDE 3: 1.1. Introducción - Características (Las 8 Claves)         -->
+    <!-- =================================================================== -->
+    <section class="slide-item" data-step="3">
+      <span class="slide-badge purple">✨ 1.1. Introducción • Características</span>
+      <h2 class="slide-title">Las 8 Características Principales de express-rate-limit</h2>
+      <p class="slide-desc">
+        Conoce por qué <code>express-rate-limit</code> es el estándar de la industria para proteger rutas y servidores construidos con Express en Node.js:
+      </p>
+
+      <div class="grid-4">
+        <div class="card-info accent-green">
+          <div class="card-title">1. Limitación de Tasa</div>
+          <div class="card-text">
+            Permite configurar un límite exacto en la cantidad de solicitudes que pueden realizarse a una ruta o a toda la aplicación Express en un período de tiempo determinado.
+          </div>
+        </div>
+
+        <div class="card-info accent-red">
+          <div class="card-title">2. Prevención de DoS</div>
+          <div class="card-text">
+            Ayuda a proteger la aplicación contra ataques de denegación de servicio (<strong>DoS</strong>) limitando la cantidad de solicitudes que pueden provenir de una dirección IP en particular.
+          </div>
+        </div>
+
+        <div class="card-info accent-cyan">
+          <div class="card-title">3. Configuración Flexible</div>
+          <div class="card-text">
+            Permite configurar libremente el tiempo de la ventana (<code>windowMs</code>) y el límite máximo de solicitudes (<code>limit</code> / <code>max</code>): por ejemplo, 100 por hora o 5 por minuto.
+          </div>
+        </div>
+
+        <div class="card-info accent-amber">
+          <div class="card-title">4. Respuestas Personalizadas</div>
+          <div class="card-text">
+            Puedes definir mensajes personalizados (texto o JSON en <code>message</code>) que se enviarán cuando un cliente supere el límite, informando el motivo del rechazo.
+          </div>
+        </div>
+
+        <div class="card-info accent-purple">
+          <div class="card-title">5. Integración con Express</div>
+          <div class="card-text">
+            Como middleware nativo de Express, es muy fácil de integrar en una aplicación existente: simplemente se agrega con <code>app.use()</code> en la cadena de middlewares.
+          </div>
+        </div>
+
+        <div class="card-info accent-cyan">
+          <div class="card-title">6. Restricción por IP</div>
+          <div class="card-text">
+            Rastrea y limita automáticamente las solicitudes por dirección IP (<code>req.ip</code>), evitando abusos, bots de compra o spam desde una IP específica hacia el catálogo de videojuegos.
+          </div>
+        </div>
+
+        <div class="card-info accent-green">
+          <div class="card-title">7. Opciones Avanzadas</div>
+          <div class="card-text">
+            Además de <code>windowMs</code> y <code>max</code>, proporciona opciones avanzadas para adaptarse a cualquier arquitectura: <code>skip</code>, <code>handler</code>, <code>headers</code>, <code>keyGenerator</code> y <code>store</code>.
+          </div>
+        </div>
+
+        <div class="card-info accent-amber">
+          <div class="card-title">8. Monitoreo de Tráfico</div>
+          <div class="card-text">
+            Inyecta metadatos en <code>req.rateLimit</code> y cabeceras HTTP estándar para proporcionar registros y métricas útiles al monitorear el tráfico de tu API.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- SLIDE 4: Tabla Completa de las 14 Opciones de Configuración         -->
+    <!-- =================================================================== -->
+    <section class="slide-item" data-step="4">
+      <span class="slide-badge amber">⚙️ Referencia Técnica Oficial</span>
+      <h2 class="slide-title">Las 14 Opciones de Configuración de express-rate-limit</h2>
+      <p class="slide-desc">
+        Explora todas las propiedades de configuración del middleware con enlace directo a la documentación oficial. Usa el buscador para filtrar por nombre o descripción:
+      </p>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 0.85rem;">
+        <input type="text" id="inputSearchOptions" class="input-search" placeholder="🔍 Filtrar opción (ej: windowMs, limit, headers, skip, store...)" oninput="filtrarTablaOpciones()">
+        <span id="optionsCountLabel" style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--campus-cyan);">
+          Mostrando 14 / 14 opciones oficiales
+        </span>
+      </div>
+
+      <div class="table-wrap">
+        <table class="table-custom" id="tablaOpcionesRateLimit">
+          <thead>
+            <tr>
+              <th style="width: 210px;">Opción (Link Oficial)</th>
+              <th style="width: 190px;">Tipo de Dato</th>
+              <th>Descripción Pedagógica</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><a class="opt-link" href="https://express-rate-limit.mintlify.app/reference/configuration#windowms" target="_blank">windowMs ↗</a></td>
+              <td><span class="opt-type">number</span></td>
+              <td>Especifica cuánto tiempo recordar las solicitudes, en <strong>milisegundos</strong> (ej. <code>60 * 1000</code> = 1 minuto). Durante este período, las solicitudes se rastrean para verificar si exceden el límite establecido.</td>
+            </tr>
+            <tr>
+              <td><a class="opt-link" href="https://express-rate-limit.mintlify.app/reference/configuration#limit" target="_blank">limit (o max) ↗</a></td>
+              <td><span class="opt-type">number | function</span></td>
+              <td>Es el límite de solicitudes permitidas dentro de la ventana especificada. Puede ser un número fijo (ej. <code>5</code>) o una función asíncrona/síncrona que devuelve un número dinámico basado en la solicitud (ej. jugadores VIP vs Gratis).</td>
+            </tr>
+            <tr>
+              <td><a class="opt-link" href="https://express-rate-limit.mintlify.app/reference/configuration#message" target="_blank">message ↗</a></td>
+              <td><span class="opt-type">string | json | function</span></td>
+              <td>Es la respuesta que se enviará después de que se alcance el límite de solicitudes. Puede ser un mensaje de texto plano, un objeto JSON estructurado o una función que genera la respuesta.</td>
+            </tr>
+            <tr>
+              <td><a class="opt-link" href="https://express-rate-limit.mintlify.app/reference/configuration#statuscode" target="_blank">statusCode ↗</a></td>
+              <td><span class="opt-type">number</span></td>
+              <td>Es el código de estado HTTP que se enviará después de que se alcance el límite. El valor predeterminado es <strong><code>429</code></strong> (<em>Too Many Requests / Demasiadas solicitudes</em>).</td>
+            </tr>
+            <tr>
+              <td><a class="opt-link" href="https://express-rate-limit.mintlify.app/reference/configuration#legacyheaders" target="_blank">legacyHeaders ↗</a></td>
+              <td><span class="opt-type">boolean</span></td>
+              <td>Cuando está habilitado (<code>true</code>), agrega los encabezados clásicos <code>X-RateLimit-Limit</code>, <code>X-RateLimit-Remaining</code> y <code>X-RateLimit-Reset</code> a la respuesta HTTP.</td>
+            </tr>
+            <tr>
+              <td><a class="opt-link" href="https://express-rate-limit.mintlify.app/reference/configuration#standardheaders" target="_blank">standardHeaders ↗</a></td>
+              <td><span class="opt-type">'draft-6' | 'draft-7'</span></td>
+              <td>Habilita el encabezado estándar del IETF <code>RateLimit</code> en la respuesta HTTP. Puede configurarse como <code>'draft-6'</code>, <code>'draft-7'</code> o booleano.</td>
+            </tr>
+            <tr>
+              <td><a class="opt-link" href="https://express-rate-limit.mintlify.app/reference/configuration#requestpropertyname" target="_blank">requestPropertyName ↗</a></td>
+              <td><span class="opt-type">string</span></td>
+              <td>Agrega información en tiempo real sobre el límite de tasa al objeto de solicitud (<code>req</code>) de Express. Por defecto es <code>req.rateLimit</code>, pero puedes personalizar el nombre de la propiedad.</td>
+            </tr>
+            <tr>
+              <td><a class="opt-link" href="https://express-rate-limit.mintlify.app/reference/configuration#skipfailedrequests" target="_blank">skipFailedRequests ↗</a></td>
+              <td><span class="opt-type">boolean</span></td>
+              <td>Si está habilitado (<code>true</code>), las respuestas con códigos de error <code>4xx</code> o <code>5xx</code> no descontarán tokens del límite de tasa del cliente.</td>
+            </tr>
+            <tr>
+              <td><a class="opt-link" href="https://express-rate-limit.mintlify.app/reference/configuration#keygenerator" target="_blank">keyGenerator ↗</a></td>
+              <td><span class="opt-type">function</span></td>
+              <td>Función que identifica de forma única a los usuarios. Por defecto utiliza la dirección IP del cliente (<code>req.ip</code>), pero puedes personalizarla para limitar por API Key o ID de jugador.</td>
+            </tr>
+            <tr>
+              <td><a class="opt-link" href="https://express-rate-limit.mintlify.app/reference/configuration#handler" target="_blank">handler ↗</a></td>
+              <td><span class="opt-type">function</span></td>
+              <td>Función <code>(req, res, next, options)</code> que se ejecuta cuando el cliente alcanza el límite. Puede anular los valores predeterminados de <code>message</code> y <code>statusCode</code> si está configurada.</td>
+            </tr>
+            <tr>
+              <td><a class="opt-link" href="https://express-rate-limit.mintlify.app/reference/configuration#skip" target="_blank">skip ↗</a></td>
+              <td><span class="opt-type">function</span></td>
+              <td>Función <code>(req, res) => boolean</code> que puede devolver <code>true</code> para omitir (saltar) el limitador en solicitudes específicas (ej. IPs internas o administradores).</td>
+            </tr>
+            <tr>
+              <td><a class="opt-link" href="https://express-rate-limit.mintlify.app/reference/configuration#requestwassuccessful" target="_blank">requestWasSuccessful ↗</a></td>
+              <td><span class="opt-type">function</span></td>
+              <td>Se utiliza en conjunto con <code>skipFailedRequests</code> y <code>skipSuccessfulRequests</code> para definir la lógica que determina si una solicitud fue exitosa o no (por defecto <code>res.statusCode &lt; 400</code>).</td>
+            </tr>
+            <tr>
+              <td><a class="opt-link" href="https://express-rate-limit.mintlify.app/reference/configuration#validate" target="_blank">validate ↗</a></td>
+              <td><span class="opt-type">boolean | object</span></td>
+              <td>Habilita o deshabilita las verificaciones de validación integradas de <code>express-rate-limit</code> al iniciar el servidor. Puede ser un booleano o un objeto de opciones.</td>
+            </tr>
+            <tr>
+              <td><a class="opt-link" href="https://express-rate-limit.mintlify.app/reference/configuration#store" target="_blank">store ↗</a></td>
+              <td><span class="opt-type">Store</span></td>
+              <td>Permite usar un almacenamiento personalizado (por defecto usa memoria RAM local, pero soporta Redis, Memcached o MongoDB) para compartir recuentos de solicitudes entre múltiples servidores.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- SLIDE 5: 2 y 2.1 Instalación, Configuración Básica y StatusCode 429 -->
+    <!-- =================================================================== -->
+    <section class="slide-item" data-step="5">
+      <span class="slide-badge">⚡ 2 & 2.1 • Configuración Básica y Códigos de Estado</span>
+      <h2 class="slide-title">2. Instalación, Configuración Básica y Respuestas 429</h2>
+      <p class="slide-desc">
+        Primero creamos el directorio del proyecto, inicializamos Node.js e instalamos <code>express</code> y <code>express-rate-limit</code>. Observa cómo se estructura el código en <strong>VS Code</strong> con cada línea bien separada y adaptada a nuestra tienda de <strong>Videojuegos</strong>:
+      </p>
+
+      <div class="terminal-box">
+        <div class="terminal-header">
+          <span>PASO PREVIO EN TERMINAL: CREAR PROYECTO E INSTALAR PAQUETES</span>
+          <button class="btn-copy" onclick="copiarTexto('mkdir express-rate-limit-videojuegos\ncd express-rate-limit-videojuegos\nnpm init -y\nnpm install express express-rate-limit')">Copiar Comandos</button>
+        </div>
+mkdir express-rate-limit-videojuegos
+cd express-rate-limit-videojuegos
+npm init -y
+npm install express express-rate-limit</div>
+
+      <div class="grid-2">
+        <!-- 2. Configuración Básica -->
+        <div>
+          <div class="card-info accent-green" style="margin-bottom: 0.75rem;">
+            <div class="card-title">2. Configuración Básica (5 solicitudes / minuto)</div>
+            <div class="card-text">
+              Crea un limitador global que permite máximo <strong>5 solicitudes por minuto</strong> para todas las rutas de videojuegos. Al superar las 5 solicitudes, responde con el mensaje configurado y código <code>429</code>.
+            </div>
+          </div>
+          <div class="vscode-window">
+            <div class="vscode-titlebar">
+              <div class="vscode-dots"><span class="vscode-dot red"></span><span class="vscode-dot yellow"></span><span class="vscode-dot green"></span></div>
+              <span>app-basico.js — VS Code Dark+</span>
+              <button class="btn-copy" onclick="copiarSnippetEstudio('basico')">Copiar Código</button>
+            </div>
+            <div class="vscode-static-code" id="staticCodeBasico"></div>
+          </div>
+        </div>
+
+        <!-- 2.1 Respuestas y Códigos de Estado -->
+        <div>
+          <div class="card-info accent-cyan" style="margin-bottom: 0.75rem;">
+            <div class="card-title">2.1. Respuestas y Códigos de Estado (statusCode: 429)</div>
+            <div class="card-text">
+              Configura explícitamente <code>max: 3</code> (3 solicitudes por minuto) y <code>statusCode: 429</code> (Código de estado HTTP 429 <em>Too Many Requests</em>) junto con el mensaje de protección.
+            </div>
+          </div>
+          <div class="vscode-window">
+            <div class="vscode-titlebar">
+              <div class="vscode-dots"><span class="vscode-dot red"></span><span class="vscode-dot yellow"></span><span class="vscode-dot green"></span></div>
+              <span>app-status-429.js — VS Code Dark+</span>
+              <button class="btn-copy" onclick="copiarSnippetEstudio('status429')">Copiar Código</button>
+            </div>
+            <div class="vscode-static-code" id="staticCodeStatus429"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-info accent-purple">
+        <div class="card-title">🔍 Explicación Línea por Línea de las Opciones Utilizadas</div>
+        <div class="card-text">
+          • <strong><code>windowMs: 60 * 1000</code></strong>: Define una ventana de 1 minuto (60 segundos × 1000 milisegundos = 60,000 ms).<br>
+          • <strong><code>max: 3</code> (o <code>limit: 3</code>)</strong>: Permite únicamente 3 solicitudes por minuto desde la misma dirección IP.<br>
+          • <strong><code>message</code></strong>: Mensaje personalizado que recibe el jugador cuando alcanza el límite de solicitudes.<br>
+          • <strong><code>statusCode: 429</code></strong>: Código de estado HTTP oficial que indica <em>Demasiadas solicitudes</em>.<br>
+          • <strong><code>app.use(limiter)</code></strong>: Registra y aplica el middleware a todas las solicitudes entrantes del servidor.
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- SLIDE 6: 2.2 Mensajes/Encabezados y 2.3 Protección de /api/         -->
+    <!-- =================================================================== -->
+    <section class="slide-item" data-step="6">
+      <span class="slide-badge cyan">📡 2.2 & 2.3 • Encabezados HTTP y Protección de Rutas /api/</span>
+      <h2 class="slide-title">2.2. Encabezados (Headers) y 2.3. Protección de la API</h2>
+      <p class="slide-desc">
+        Además de bloquear abusos, <code>express-rate-limit</code> puede enviar encabezados HTTP informativos al cliente y aplicarse selectivamente solo a las rutas que comiencen con <strong><code>/api/</code></strong>:
+      </p>
+
+      <div class="grid-2">
+        <!-- 2.2 Mensajes y Encabezados -->
+        <div>
+          <div class="card-info accent-amber" style="margin-bottom: 0.75rem;">
+            <div class="card-title">2.2. Mensajes y Encabezados (headers: true)</div>
+            <div class="card-text">
+              Con <code>max: 2</code> y <code>headers: true</code> (o <code>legacyHeaders: true</code> + <code>standardHeaders: 'draft-7'</code>), el servidor informa en cada respuesta cuántos intentos le quedan al jugador.
+            </div>
+          </div>
+          <div class="vscode-window">
+            <div class="vscode-titlebar">
+              <div class="vscode-dots"><span class="vscode-dot red"></span><span class="vscode-dot yellow"></span><span class="vscode-dot green"></span></div>
+              <span>app-headers.js — VS Code Dark+</span>
+              <button class="btn-copy" onclick="copiarSnippetEstudio('headers')">Copiar Código</button>
+            </div>
+            <div class="vscode-static-code" id="staticCodeHeaders"></div>
+          </div>
+        </div>
+
+        <!-- 2.3 Seguridad y Protección de la API -->
+        <div>
+          <div class="card-info accent-purple" style="margin-bottom: 0.75rem;">
+            <div class="card-title">2.3. Seguridad y Protección de Rutas (/api/)</div>
+            <div class="card-text">
+              Usando <strong><code>app.use('/api/', apiLimiter)</code></strong> protegemos únicamente los endpoints de nuestra API de videojuegos (como <code>/api/videojuegos</code>) con un límite de 5 solicitudes por minuto.
+            </div>
+          </div>
+          <div class="vscode-window">
+            <div class="vscode-titlebar">
+              <div class="vscode-dots"><span class="vscode-dot red"></span><span class="vscode-dot yellow"></span><span class="vscode-dot green"></span></div>
+              <span>app-api-limiter.js — VS Code Dark+</span>
+              <button class="btn-copy" onclick="copiarSnippetEstudio('apilimiter')">Copiar Código</button>
+            </div>
+            <div class="vscode-static-code" id="staticCodeApiLimiter"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-info accent-green">
+        <div class="card-title">📬 ¿Qué encabezados HTTP ve el cliente cuando habilitamos headers?</div>
+        <div class="card-text">
+          • <code>X-RateLimit-Limit: 5</code> → Total de solicitudes permitidas en la ventana de 1 minuto.<br>
+          • <code>X-RateLimit-Remaining: 4</code> → Tokens o solicitudes restantes antes del bloqueo 429.<br>
+          • <code>X-RateLimit-Reset: 1760878860</code> → Marca de tiempo en segundos en la que se reiniciarán los tokens.<br>
+          • <code>RateLimit: limit=5, remaining=4, reset=60</code> → Formato estándar moderno IETF (<code>draft-7</code>).
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- SLIDE 7: 3. Configuración del rateLimit como un Middleware Modular  -->
+    <!-- =================================================================== -->
+    <section class="slide-item" data-step="7">
+      <span class="slide-badge purple">🧩 3. Arquitectura Modular • Separación de Responsabilidades</span>
+      <h2 class="slide-title">3. Configuración del rateLimit como un Middleware Modular</h2>
+      <p class="slide-desc">
+        En proyectos profesionales de Campuslands no definimos todos los middlewares amontonados dentro de <code>app.js</code>. Extraemos <code>apiLimiter</code> a su propio archivo modular (por ejemplo, <code>helperLimit.js</code> o <code>src/middlewares/rateLimiter.js</code>) y lo exportamos con <strong><code>export const apiLimiter</code></strong>:
+      </p>
+
+      <div class="grid-2">
+        <!-- Archivo 1: helperLimit.js -->
+        <div>
+          <div class="card-info accent-cyan" style="margin-bottom: 0.75rem;">
+            <div class="card-title">Paso 1: Archivo del Middleware (helperLimit.js)</div>
+            <div class="card-text">
+              Importa <code>{ rateLimit }</code> desde <code>'express-rate-limit'</code> y exporta la constante <code>apiLimiter</code> lista para reutilizarse en cualquier ruta.
+            </div>
+          </div>
+          <div class="vscode-window">
+            <div class="vscode-titlebar">
+              <div class="vscode-dots"><span class="vscode-dot red"></span><span class="vscode-dot yellow"></span><span class="vscode-dot green"></span></div>
+              <span>src/helperLimit.js — VS Code Dark+</span>
+              <button class="btn-copy" onclick="copiarSnippetEstudio('helperFile')">Copiar Código</button>
+            </div>
+            <div class="vscode-static-code" id="staticCodeHelperFile"></div>
+          </div>
+        </div>
+
+        <!-- Archivo 2: app.js consumiendo helperLimit -->
+        <div>
+          <div class="card-info accent-green" style="margin-bottom: 0.75rem;">
+            <div class="card-title">Paso 2: Servidor Principal (src/app.js)</div>
+            <div class="card-text">
+              Importa <code>{ apiLimiter }</code> desde el módulo helper y lo monta con <code>app.use('/api/', apiLimiter)</code> para blindar el catálogo de videojuegos.
+            </div>
+          </div>
+          <div class="vscode-window">
+            <div class="vscode-titlebar">
+              <div class="vscode-dots"><span class="vscode-dot red"></span><span class="vscode-dot yellow"></span><span class="vscode-dot green"></span></div>
+              <span>src/app.js — VS Code Dark+</span>
+              <button class="btn-copy" onclick="copiarSnippetEstudio('helperApp')">Copiar Código</button>
+            </div>
+            <div class="vscode-static-code" id="staticCodeHelperApp"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-info accent-amber">
+        <div class="card-title">⚠️ Nota Importante de Sintaxis ECMAScript Modules (ESM) en Node.js</div>
+        <div class="card-text">
+          En algunos apuntes antiguos puedes encontrar <code>import { express } from 'express'</code>, pero en versiones reales de Node.js con <code>"type": "module"</code>, Express se exporta por defecto, por lo que la forma correcta que evita errores de ejecución es <strong><code>import express from 'express';</code></strong> (sin llaves), mientras que <strong><code>import { rateLimit } from 'express-rate-limit';</code></strong> sí utiliza llaves por ser una exportación nombrada.
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- SLIDE 8: Paso a Paso Inicial del Ejercicio Completo de Videojuegos  -->
+    <!-- =================================================================== -->
+    <section class="slide-item" data-step="8">
+      <span class="slide-badge cyan">🛠️ Ejercicio Completo Paso a Paso • Sin Base de Datos</span>
+      <h2 class="slide-title">Construye el Proyecto Completo de Videojuegos (En Memoria)</h2>
+      <p class="slide-desc">
+        Ahora uniremos todo lo aprendido en un ejercicio real de Node.js y Express donde la base de datos es un <strong>arreglo de videojuegos en memoria</strong> (<code>src/data/videojuegos.db.js</code>) protegido por middlewares de Rate Limit, validación y auditoría.
+      </p>
+
+      <div class="grid-2">
+        <div class="card-info accent-cyan">
+          <div class="card-title">
+            <span>1. Comandos en Terminal para Crear el Proyecto</span>
+            <button class="btn-copy" onclick="copiarTexto(`mkdir campuslands-express-ratelimit-interactivo && cd campuslands-express-ratelimit-interactivo\nnpm init -y\nnpm install express express-rate-limit\nmkdir -p src/data src/middlewares src/routes\ntouch src/app.js src/helperLimit.js src/data/videojuegos.db.js src/middlewares/rateLimiter.js src/middlewares/logger.js src/middlewares/validator.js src/middlewares/errorHandler.js src/routes/videojuegos.routes.js`)">Copiar Todo</button>
+          </div>
+          <div class="card-text">
+            Ejecuta estos comandos para crear la estructura de carpetas y archivos desde cero:
+            <div class="terminal-box">
+# 1. Crear carpeta del proyecto y entrar
+mkdir campuslands-express-ratelimit-interactivo
+cd campuslands-express-ratelimit-interactivo
+
+# 2. Inicializar package.json e instalar dependencias
+npm init -y
+npm install express express-rate-limit
+
+# 3. Crear directorios por capas
+mkdir -p src/data src/middlewares src/routes
+
+# 4. Crear archivos de código fuente
+touch src/app.js src/helperLimit.js
+touch src/data/videojuegos.db.js
+touch src/middlewares/rateLimiter.js
+touch src/middlewares/logger.js
+touch src/middlewares/validator.js
+touch src/middlewares/errorHandler.js
+touch src/routes/videojuegos.routes.js</div>
+          </div>
+        </div>
+
+        <div class="card-info accent-green">
+          <div class="card-title">
+            <span>2. Configurar package.json ("type": "module")</span>
+            <button class="btn-copy" onclick="copiarTexto(`{\n  &quot;name&quot;: &quot;campuslands-express-ratelimit-interactivo&quot;,\n  &quot;version&quot;: &quot;1.0.0&quot;,\n  &quot;type&quot;: &quot;module&quot;,\n  &quot;main&quot;: &quot;src/app.js&quot;,\n  &quot;scripts&quot;: {\n    &quot;start&quot;: &quot;node src/app.js&quot;,\n    &quot;dev&quot;: &quot;node --watch src/app.js&quot;,\n    &quot;test&quot;: &quot;NODE_ENV=test node test/test-api.js&quot;\n  },\n  &quot;dependencies&quot;: {\n    &quot;express&quot;: &quot;^4.21.2&quot;,\n    &quot;express-rate-limit&quot;: &quot;^7.5.0&quot;\n  }\n}`)">Copiar JSON</button>
+          </div>
+          <div class="card-text">
+            Asegúrate de incluir <strong><code>"type": "module"</code></strong> en tu <code>package.json</code> para habilitar <code>import</code> / <code>export</code>:
+            <div class="terminal-box">
+{
+  "name": "campuslands-express-ratelimit-interactivo",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "node --watch src/app.js",
+    "test": "NODE_ENV=test node test/test-api.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0"
+  }
+}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-info accent-purple">
+        <div class="card-title">📂 Mapa de Archivos del Ejercicio de Videojuegos</div>
+        <div class="card-text" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+          <div class="terminal-box" style="margin: 0; color: #c4b5fd;">
+campuslands-express-ratelimit-interactivo/
+├── package.json
+└── src/
+    ├── app.js
+    ├── helperLimit.js
+    ├── data/
+    │   └── videojuegos.db.js
+    ├── middlewares/
+    │   ├── rateLimiter.js
+    │   ├── logger.js
+    │   ├── validator.js
+    │   └── errorHandler.js
+    └── routes/
+        └── videojuegos.routes.js</div>
+          <div>
+            • <strong><code>src/data/videojuegos.db.js</code></strong>: Arreglo en memoria con 4 videojuegos semilla (<em>Zelda, Elden Ring, Hollow Knight Silksong, Cyberpunk 2077</em>).<br><br>
+            • <strong><code>src/middlewares/rateLimiter.js</code></strong>: Define <code>apiLimiter</code> (5 req/min para <code>/api/</code>) y <code>crearJuegoLimiter</code> (3 POST/min).<br><br>
+            • <strong><code>src/routes/videojuegos.routes.js</code></strong>: Enrutador CRUD completo (<code>GET</code>, <code>POST</code>, <code>PUT</code>, <code>DELETE</code>) que informa en vivo los tokens restantes.<br><br>
+            👉 <em>¡Avanza a la siguiente diapositiva para inspeccionar cada archivo línea por línea en VS Code!</em>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- SLIDE 9: Explorador Interactivo Línea a Línea (VS Code Dark+)       -->
+    <!-- =================================================================== -->
+    <section class="slide-item" data-step="9">
+      <span class="slide-badge">🔍 Editor VS Code Interactivo • 100% de las Líneas Visibles</span>
+      <h2 class="slide-title">Explorador de Código Línea a Línea (Estilo VS Code)</h2>
+      <p class="slide-desc">
+        Selecciona cualquiera de los 6 archivos en las pestañas superiores de VS Code. <strong>Nunca ocultamos ni recortamos líneas</strong> y las líneas largas saltan automáticamente. <strong>Haz clic en cualquier línea</strong> para leer su explicación pedagógica detallada a la derecha:
+      </p>
+
+      <div class="vscode-window">
+        <!-- Pestañas de archivos superiores -->
+        <div class="vscode-tabs-bar">
+          <button class="vscode-tab active" data-file="app">
+            <span class="tab-icon-js">JS</span>
+            <span>src/app.js</span>
+          </button>
+          <button class="vscode-tab" data-file="rateLimiter">
+            <span class="tab-icon-js">JS</span>
+            <span>src/middlewares/rateLimiter.js</span>
+          </button>
+          <button class="vscode-tab" data-file="routes">
+            <span class="tab-icon-js">JS</span>
+            <span>src/routes/videojuegos.routes.js</span>
+          </button>
+          <button class="vscode-tab" data-file="db">
+            <span class="tab-icon-js">JS</span>
+            <span>src/data/videojuegos.db.js</span>
+          </button>
+          <button class="vscode-tab" data-file="validator">
+            <span class="tab-icon-js">JS</span>
+            <span>src/middlewares/validator.js</span>
+          </button>
+          <button class="vscode-tab" data-file="loggerError">
+            <span class="tab-icon-js">JS</span>
+            <span>logger.js & errorHandler.js</span>
+          </button>
+        </div>
+
+        <!-- Barra de ruta / breadcrumbs -->
+        <div class="vscode-breadcrumbs">
+          <div id="vscodeBreadcrumbs">
+            <span>campuslands-express-ratelimit-interactivo</span> &gt; <span>src</span> &gt; <span class="active-crumb">app.js</span>
+          </div>
+          <button class="btn-copy" onclick="copiarArchivoActivo()">📋 Copiar Archivo Completo</button>
+        </div>
+
+        <!-- Área de código completo y panel explicativo -->
+        <div class="vscode-body">
+          <!-- Editor con todas las líneas visibles y wrap automático -->
+          <div class="vscode-editor" id="codeLinesPanel"></div>
+
+          <!-- Inspector explicativo lateral -->
+          <div class="vscode-inspector" id="codeDetailPanel">
+            <span class="detail-badge" id="detailBadge">SRC/APP.JS : LÍNEA 1</span>
+            <h3 class="detail-heading" id="detailHeading">Haz clic en cualquier línea de código</h3>
+            <div class="detail-body" id="detailBody">
+              Haz clic sobre cualquier línea del editor a la izquierda para inspeccionar qué hace exactamente en Node.js, cómo interactúa con el middleware <code>express-rate-limit</code> y por qué está escrita de esa manera.
+            </div>
+            <div class="detail-box-tip" id="detailTip">
+              💡 <strong>Tip de lectura:</strong> Todas las líneas tienen ajuste automático de texto (word-wrap) para que puedas leer el código completo sin barras de desplazamiento horizontales.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- SLIDE 10: Ejecución y Pruebas Locales con cURL y Bloqueo 429        -->
+    <!-- =================================================================== -->
+    <section class="slide-item" data-step="10">
+      <span class="slide-badge accent-green">💻 Pruebas Locales en Terminal</span>
+      <h2 class="slide-title">Cómo Correr el Servidor y Disparar el Bloqueo 429 en Local</h2>
+      <p class="slide-desc">
+        Una vez tengas los archivos en tu computadora, levanta el servidor y comprueba tanto las operaciones sobre el arreglo de videojuegos como el bloqueo automático de <code>express-rate-limit</code> en la sexta solicitud:
+      </p>
+
+      <div class="grid-2">
+        <div class="card-info accent-green">
+          <div class="card-title">
+            <span>1. Levantar el Servidor y Correr Tests</span>
+            <button class="btn-copy" onclick="copiarTexto('npm run dev')">Copiar</button>
+          </div>
+          <div class="card-text">
+            En tu primera terminal inicia el servidor en modo desarrollo:
+            <div class="terminal-box">
+npm run dev
+
+🎮 Servidor de Videojuegos iniciado en http://localhost:3000
+🛡️ Rate Limit activo en /api/videojuegos (Máx: 5 req / min)</div>
+            O ejecuta la suite automatizada que verifica el CRUD y la respuesta <code>429</code>:
+            <div class="terminal-box">
+npm test</div>
+          </div>
+        </div>
+
+        <div class="card-info accent-red">
+          <div class="card-title">
+            <span>2. Prueba de Fuego: Ráfaga de 6 Peticiones (429)</span>
+            <button class="btn-copy" onclick="copiarTexto('for i in {1..6}; do echo \"\n--- Petición #$i ---\"; curl -i http://localhost:3000/api/videojuegos; done')">Copiar Comando</button>
+          </div>
+          <div class="card-text">
+            Ejecuta este bucle en otra terminal para lanzar <strong>6 solicitudes seguidas</strong> y ver cómo de la #1 a la #5 responden <code>200 OK</code> y la #6 es rechazada con <code>HTTP/1.1 429 Too Many Requests</code>:
+            <div class="terminal-box">
+for i in {1..6}; do
+  echo "\n--- Petición #$i ---"
+  curl -i http://localhost:3000/api/videojuegos
+done</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-info accent-cyan">
+        <div class="card-title">3. Comandos cURL para Operar el Arreglo de Videojuegos en Memoria</div>
+        <div class="grid-2" style="margin: 0.5rem 0;">
+          <div>
+            <strong>A. Listar catálogo e inspeccionar cabeceras RateLimit [GET]</strong>
+            <div class="terminal-box">
+              <button class="btn-copy" style="float: right;" onclick="copiarTexto('curl -i http://localhost:3000/api/videojuegos')">Copiar</button>
+curl -i http://localhost:3000/api/videojuegos</div>
+
+            <strong>B. Registrar un nuevo videojuego en el arreglo [POST 201]</strong>
+            <div class="terminal-box">
+              <button class="btn-copy" style="float: right;" onclick="copiarTexto(`curl -X POST http://localhost:3000/api/videojuegos -H \"Content-Type: application/json\" -d '{\"titulo\":\"God of War Ragnarök\",\"genero\":\"Acción\",\"plataforma\":\"PS5 / PC\",\"precio\":59.99}'`)">Copiar</button>
+curl -X POST http://localhost:3000/api/videojuegos \
+  -H "Content-Type: application/json" \
+  -d '{"titulo":"God of War Ragnarök","genero":"Acción","plataforma":"PS5 / PC","precio":59.99}'</div>
+          </div>
+
+          <div>
+            <strong>C. Actualizar precio de un videojuego por ID [PUT 200]</strong>
+            <div class="terminal-box">
+              <button class="btn-copy" style="float: right;" onclick="copiarTexto(`curl -X PUT http://localhost:3000/api/videojuegos/1 -H \"Content-Type: application/json\" -d '{\"titulo\":\"Zelda: Tears of the Kingdom Deluxe\",\"genero\":\"Aventura / RPG\",\"plataforma\":\"Nintendo Switch\",\"precio\":49.99}'`)">Copiar</button>
+curl -X PUT http://localhost:3000/api/videojuegos/1 \
+  -H "Content-Type: application/json" \
+  -d '{"titulo":"Zelda: Tears of the Kingdom Deluxe","genero":"Aventura / RPG","plataforma":"Nintendo Switch","precio":49.99}'</div>
+
+            <strong>D. Eliminar un videojuego del arreglo por ID [DELETE 200]</strong>
+            <div class="terminal-box">
+              <button class="btn-copy" style="float: right;" onclick="copiarTexto('curl -X DELETE http://localhost:3000/api/videojuegos/3')">Copiar</button>
+curl -X DELETE http://localhost:3000/api/videojuegos/3</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- SLIDE 11: Simulador Interactivo en Vivo (Sandbox Rate Limit + CRUD) -->
+    <!-- =================================================================== -->
+    <section class="slide-item" data-step="11">
+      <span class="slide-badge cyan">🎮 Laboratorio en Vivo • Prueba express-rate-limit Aquí Mismo</span>
+      <h2 class="slide-title">Simulador Interactivo: Rate Limiter + CRUD de Videojuegos</h2>
+      <p class="slide-desc">
+        Experimenta en tiempo real cómo funciona <code>express-rate-limit</code> sobre nuestro arreglo de videojuegos. Cada petición a <code>/api/videojuegos</code> descuenta un token de tu ventana activa. Cuando los tokens lleguen a <strong>0</strong>, el middleware bloqueará tus solicitudes con <strong><code>429 Too Many Requests</code></strong> hasta que el temporizador se reinicie o pulses <em>Reiniciar Ventana</em>:
+      </p>
+
+      <div class="sandbox-container">
+        <!-- HUD del Middleware express-rate-limit -->
+        <div class="ratelimit-hud">
+          <div>
+            <div style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--campus-cyan); font-weight: 800;">
+              🛡️ Estado del Middleware express-rate-limit (IP: 127.0.0.1)
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.85rem; margin-top: 0.45rem; flex-wrap: wrap;">
+              <div class="token-pills" id="hudTokenPills"></div>
+              <span id="hudTokensText" style="font-family: var(--font-mono); font-weight: 800; font-size: 0.92rem; color: #4ade80;">
+                5 / 5 tokens disponibles
+              </span>
+            </div>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 0.85rem; flex-wrap: wrap;">
+            <div style="background: #060911; border: 1px solid var(--border-subtle); padding: 0.45rem 0.85rem; border-radius: 10px; font-family: var(--font-mono); font-size: 0.82rem;">
+              ⏱️ Reinicio windowMs: <strong id="hudTimerText" style="color: var(--campus-amber);">60s</strong>
+            </div>
+            <select id="selMaxLimit" class="select-method" style="padding: 0.45rem 0.75rem; font-size: 0.8rem;" onchange="cambiarConfigLimitador()">
+              <option value="5">Config: max = 5 req / 60s (Sección 2.3)</option>
+              <option value="3">Config: max = 3 req / 60s (Sección 2.1)</option>
+              <option value="2">Config: max = 2 req / 60s (Sección 2.2)</option>
+            </select>
+            <button class="btn-preset" style="border-color: var(--node-green); color: #4ade80;" onclick="recargarTokensAhora()">
+              ⚡ Reiniciar Tokens (windowMs)
+            </button>
+          </div>
+        </div>
+
+        <!-- Barra de Presets Rápidos -->
+        <div class="sandbox-preset-bar">
+          <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted);">Pruebas Rápidas:</span>
+          <button class="btn-preset" onclick="setPreset('GET_ALL')">📋 Listar Juegos [GET]</button>
+          <button class="btn-preset" onclick="setPreset('GET_ONE')">🔍 Buscar ID 1 [GET]</button>
+          <button class="btn-preset" onclick="setPreset('POST_OK')">➕ Agregar Juego [POST 201]</button>
+          <button class="btn-preset" onclick="setPreset('PUT_OK')">✏️ Editar ID 2 [PUT 200]</button>
+          <button class="btn-preset" onclick="setPreset('DELETE_OK')">🗑️ Eliminar ID 3 [DELETE]</button>
+          <button class="btn-preset" style="background: rgba(239,68,68,0.15); border-color: #ef4444; color: #fca5a5;" onclick="simularAtaqueRafaga()">
+            🔥 Simular Ráfaga DoS (Agotar Tokens → 429)
+          </button>
+          <button class="btn-preset" style="color: var(--campus-amber);" onclick="reiniciarCatalogoMemoria()">
+            🔄 Restaurar Arreglo Semilla
+          </button>
+        </div>
+
+        <!-- Barra de URL y Método -->
+        <div class="sandbox-url-bar">
+          <select id="sandboxMethod" class="select-method">
+            <option value="GET">GET</option>
+            <option value="POST">POST</option>
+            <option value="PUT">PUT</option>
+            <option value="DELETE">DELETE</option>
+          </select>
+          <input type="text" id="sandboxUrl" class="input-url" value="/api/videojuegos" placeholder="/api/videojuegos">
+          <button class="btn-send" onclick="ejecutarPeticionSandbox()">
+            <span>🚀 Enviar Solicitud HTTP</span>
+          </button>
+        </div>
+
+        <!-- Paneles de Entrada y Salida -->
+        <div class="sandbox-panels">
+          <!-- Request Body Panel -->
+          <div class="sandbox-box">
+            <div class="sandbox-box-header">
+              <span>Cuerpo de la Petición (Request Body JSON)</span>
+              <span style="font-size: 0.74rem; color: var(--text-dim);">Usado en POST y PUT</span>
+            </div>
+            <textarea id="sandboxBody" class="textarea-body">{
+  "titulo": "God of War Ragnarök",
+  "genero": "Acción / Aventura",
+  "plataforma": "PlayStation 5 / PC",
+  "precio": 59.99
+}</textarea>
+            <div style="font-size: 0.76rem; color: var(--text-dim);">
+              Cadena de middlewares activa: <code>express.json()</code> → <code>logger</code> → <code>apiLimiter</code> → <code>validarVideojuego</code>
+            </div>
+          </div>
+
+          <!-- Response Panel -->
+          <div class="sandbox-box">
+            <div class="sandbox-box-header">
+              <span>Respuesta del Servidor Express + Encabezados RateLimit</span>
+              <span id="responseStatusBadge" class="badge-status s200">200 OK</span>
+            </div>
+            <div class="headers-preview" id="sandboxHeaders">
+              <span>X-RateLimit-Limit: <strong>5</strong></span>
+              <span>X-RateLimit-Remaining: <strong>5</strong></span>
+              <span>StandardHeader: <strong>draft-7</strong></span>
+            </div>
+            <pre id="sandboxOutput" class="output-json">// Haz clic en "Enviar Solicitud HTTP" o "Simular Ráfaga DoS" para observar la respuesta y el descuento de tokens...</pre>
+            <div id="sandboxMeta" style="font-size: 0.75rem; color: var(--text-dim); font-family: var(--font-mono);">
+              Servidor listo en http://localhost:3000
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabla Visual del Arreglo de Videojuegos en Memoria -->
+        <div class="table-wrap" style="margin: 0;">
+          <div style="background: #0d1322; padding: 0.75rem 1.1rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-subtle);">
+            <span style="font-weight: 700; font-size: 0.88rem; color: #fff;">
+              🎮 Arreglo en Memoria RAM (<code>src/data/videojuegos.db.js</code>)
+            </span>
+            <span id="juegosCountBadge" style="font-family: var(--font-mono); font-size: 0.78rem; color: var(--campus-cyan);">
+              Total: 4 videojuegos
+            </span>
+          </div>
+          <table class="table-custom">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Título del Videojuego</th>
+                <th>Género</th>
+                <th>Plataforma</th>
+                <th>Precio (USD)</th>
+                <th>Acción Rápida</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyVideojuegos"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Barra de Navegación Inferior Flotante (Dock) -->
+  <div class="slide-nav-dock">
+    <button id="btnPrev" class="dock-btn" title="Diapositiva Anterior (Flecha Izquierda)">‹</button>
+    <div id="dockCounter" class="dock-counter">1 / 11</div>
+    <button id="btnNext" class="dock-btn" title="Siguiente Diapositiva (Flecha Derecha)">›</button>
+  </div>
+
+  <!-- Modal de Índice Temático (TOC) -->
+  <div id="modalTOC" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">📑 Índice Paso a Paso de la Guía</h3>
+        <button id="btnCloseTOC" class="btn-close-modal">&times;</button>
+      </div>
+      <ul class="toc-list" id="tocList">
+        <li class="toc-item current" onclick="goToStep(1)">
+          <div><span class="toc-num">01</span><span>1. Introducción a express-rate-limit y Prevención DoS</span></div>
+          <span style="color: var(--text-dim); font-size: 0.78rem;">Fundamentos</span>
+        </li>
+        <li class="toc-item" onclick="goToStep(2)">
+          <div><span class="toc-num">02</span><span>Diagrama Interactivo: Conteo de Tokens y Embudo HTTP</span></div>
+          <span style="color: #38bdf8; font-size: 0.78rem; font-weight: 700;">Visualizador</span>
+        </li>
+        <li class="toc-item" onclick="goToStep(3)">
+          <div><span class="toc-num">03</span><span>1.1. Las 8 Características Principales de express-rate-limit</span></div>
+          <span style="color: var(--text-dim); font-size: 0.78rem;">Características</span>
+        </li>
+        <li class="toc-item" onclick="goToStep(4)">
+          <div><span class="toc-num">04</span><span>Tabla Oficial de las 14 Opciones de Configuración</span></div>
+          <span style="color: #fbbf24; font-size: 0.78rem; font-weight: 700;">14 Opciones</span>
+        </li>
+        <li class="toc-item" onclick="goToStep(5)">
+          <div><span class="toc-num">05</span><span>2 & 2.1. Instalación, Configuración Básica y StatusCode 429</span></div>
+          <span style="color: var(--text-dim); font-size: 0.78rem;">VS Code</span>
+        </li>
+        <li class="toc-item" onclick="goToStep(6)">
+          <div><span class="toc-num">06</span><span>2.2 & 2.3. Mensajes, Encabezados HTTP y Protección de /api/</span></div>
+          <span style="color: var(--text-dim); font-size: 0.78rem;">Headers & Rutas</span>
+        </li>
+        <li class="toc-item" onclick="goToStep(7)">
+          <div><span class="toc-num">07</span><span>3. Configuración del rateLimit como Middleware (helperLimit)</span></div>
+          <span style="color: #a855f7; font-size: 0.78rem; font-weight: 700;">Modularización</span>
+        </li>
+        <li class="toc-item" onclick="goToStep(8)">
+          <div><span class="toc-num">08</span><span>Inicialización Paso a Paso del Ejercicio de Videojuegos</span></div>
+          <span style="color: #38bdf8; font-size: 0.78rem; font-weight: 700;">Setup Terminal</span>
+        </li>
+        <li class="toc-item" onclick="goToStep(9)">
+          <div><span class="toc-num">09</span><span>Explorador de Código Línea a Línea (Estilo VS Code Dark+)</span></div>
+          <span style="color: #dcdcaa; font-size: 0.78rem; font-weight: 700;">Línea por Línea</span>
+        </li>
+        <li class="toc-item" onclick="goToStep(10)">
+          <div><span class="toc-num">10</span><span>Pruebas Locales con cURL y Disparo del Error 429</span></div>
+          <span style="color: #4ade80; font-size: 0.78rem; font-weight: 700;">Terminal Local</span>
+        </li>
+        <li class="toc-item" onclick="goToStep(11)">
+          <div><span class="toc-num">11</span><span>Simulador Interactivo en Vivo (Rate Limit + Arreglo Videojuegos)</span></div>
+          <span style="color: #f87171; font-size: 0.78rem; font-weight: 700;">Sandbox 429</span>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Toast de Notificaciones -->
+  <div id="toastMsg" class="toast-msg">Copiado al portapapeles</div>
+
+  <!-- ===================================================================== -->
+  <!-- MOTOR JAVASCRIPT: LEXER VS CODE DARK+, INSPECTOR Y SANDBOX            -->
+  <!-- ===================================================================== -->
+  <script>
+    // --- 1. SNIPPETS DE LAS SECCIONES 2, 2.1, 2.2, 2.3 y 3 (ADAPTADOS A VIDEOJUEGOS Y CON SALTOS DE LÍNEA LIMPIOS) ---
+    const snippetsEstudio = {
+      basico: `import express from 'express';
+import { rateLimit } from 'express-rate-limit';
+
+const app = express();
+
+// Define un limitador de tasa con un máximo de 5 solicitudes por minuto
+const limiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minuto
+  max: 5, // 5 solicitudes por ventana
+  message: 'Demasiadas solicitudes a la tienda de videojuegos desde esta IP, por favor intenta de nuevo en un minuto.',
+});
+
+// Aplica el limitador de tasa a todas las solicitudes
+app.use(limiter);
+
+// Ruta de ejemplo de videojuegos
+app.get('/', (req, res) => {
+  res.send('¡Bienvenido al Catálogo Gamer de Campuslands!');
+});
+
+// Inicia el servidor en el puerto 3000
+const PORT = 3000;
+app.listen(PORT, () => {
+  console.log(\`Servidor de videojuegos iniciado en http://localhost:\${PORT}\`);
+});`,
+
+      status429: `import express from 'express';
+import { rateLimit } from 'express-rate-limit';
+
+const app = express();
+
+// Definir un limitador de tasa con código de estado 429 explícito
+const limiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minuto (60 segundos * 1000 milisegundos)
+  max: 3, // 3 solicitudes por minuto
+  message: 'Demasiadas solicitudes desde esta IP, por favor intenta de nuevo en un minuto.',
+  statusCode: 429 // Código de estado HTTP 429 (Too Many Requests)
+});
+
+// Aplicar el limitador a todas las solicitudes entrantes
+app.use(limiter);
+
+// Ruta principal de videojuegos
+app.get('/', (req, res) => {
+  res.send('¡Bienvenido al Servidor de Videojuegos!');
+});
+
+// Iniciar el servidor
+const PORT = 3000;
+app.listen(PORT, () => {
+  console.log(\`Servidor iniciado en http://localhost:\${PORT}\`);
+});`,
+
+      headers: `import express from 'express';
+import { rateLimit } from 'express-rate-limit';
+
+const app = express();
+
+// Definir un limitador de tasa habilitando encabezados HTTP
+const limiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minuto
+  max: 2, // 2 solicitudes por minuto
+  message: 'Demasiadas solicitudes desde esta IP, por favor intenta de nuevo en un minuto.',
+  legacyHeaders: true, // Habilita encabezados X-RateLimit-Limit y X-RateLimit-Remaining
+  standardHeaders: 'draft-7', // Habilita encabezado estándar RateLimit
+});
+
+// Aplicar el limitador a todas las solicitudes
+app.use(limiter);
+
+// Ruta de consulta rápida
+app.get('/', (req, res) => {
+  res.send('¡Consulta de videojuegos con encabezados RateLimit activos!');
+});
+
+// Iniciar el servidor
+const PORT = 3000;
+app.listen(PORT, () => {
+  console.log(\`Servidor iniciado en http://localhost:\${PORT}\`);
+});`,
+
+      apilimiter: `import express from 'express';
+import { rateLimit } from 'express-rate-limit';
+
+const app = express();
+
+// Definir un limitador de tasa exclusivo para protección de la API
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minuto
+  max: 5, // 5 solicitudes por minuto
+  message: 'Demasiadas solicitudes a la API de videojuegos desde esta IP, intenta de nuevo en un minuto.',
+});
+
+// Aplicar el limitador únicamente a las rutas que comiencen con '/api/'
+app.use('/api/', apiLimiter);
+
+// Ruta de ejemplo para la API de videojuegos
+app.get('/api/videojuegos', (req, res) => {
+  // Lógica para devolver el arreglo de videojuegos
+  res.json({
+    message: 'Catálogo de videojuegos de la API obtenido exitosamente.'
+  });
+});
+
+// Iniciar el servidor
+const PORT = 3000;
+app.listen(PORT, () => {
+  console.log(\`Servidor iniciado en http://localhost:\${PORT}\`);
+});`,
+
+      helperFile: `import { rateLimit } from 'express-rate-limit';
+
+// Definir y exportar el limitador de tasa como middleware reutilizable
+export const apiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minuto
+  max: 5, // 5 solicitudes por minuto
+  statusCode: 429,
+  standardHeaders: 'draft-7',
+  legacyHeaders: true,
+  message: {
+    exito: false,
+    error: 'Demasiadas solicitudes desde esta IP, por favor intenta de nuevo en un minuto.'
+  },
+});`,
+
+      helperApp: `import express from 'express';
+import { apiLimiter } from './helperLimit.js';
+
+const app = express();
+
+// Aplicar el limitador de tasa a todas las solicitudes que comiencen con '/api/'
+app.use('/api/', apiLimiter);
+
+// Ruta de la API de videojuegos protegida por el middleware
+app.get('/api/videojuegos', (req, res) => {
+  res.json({
+    message: 'Datos del catálogo de videojuegos obtenidos exitosamente.'
+  });
+});
+
+// Iniciar el servidor
+const PORT = 3000;
+app.listen(PORT, () => {
+  console.log(\`Servidor iniciado en http://localhost:\${PORT}\`);
+});`
+    };
+
+    // --- 2. ARCHIVOS REALES COMPLETOS DEL PROYECTO (PARA EL EXPLORADOR LÍNEA A LÍNEA EN SLIDE 9) ---
+    const fileCodesRaw = {
+      app: `/**
+ * Servidor Principal Express con Middleware express-rate-limit (ESM)
+ * ------------------------------------------------------------------
+ * Aplicación educativa de Campuslands que protege una API REST de Videojuegos
+ * almacenados en un arreglo en memoria utilizando express-rate-limit como middleware.
+ */
+
+import express from "express";
+import { logger } from "./middlewares/logger.js";
+import { apiLimiter } from "./middlewares/rateLimiter.js";
+import { errorHandler } from "./middlewares/errorHandler.js";
+import videojuegosRouter from "./routes/videojuegos.routes.js";
+
+// 1. Instanciar la aplicación Express
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// 2. Middlewares Globales de Parseo y Auditoría
+app.use(express.json());
+app.use(logger);
+
+// 3. Ruta Pública de Bienvenida (sin límite estricto de API)
+app.get("/", (req, res) => {
+  res.status(200).json({
+    mensaje: "🎮 Bienvenido a la API de Videojuegos protegida con express-rate-limit (Campuslands)",
+    seguridad: "Middleware express-rate-limit activo en /api/ (Máx. 5 peticiones por minuto por IP)",
+    almacenamiento: "Arreglo de videojuegos en memoria RAM (sin base de datos externa)",
+    endpoints: {
+      listar_juegos: "GET /api/videojuegos",
+      buscar_por_id: "GET /api/videojuegos/:id",
+      crear_juego: "POST /api/videojuegos",
+      actualizar_juego: "PUT /api/videojuegos/:id",
+      eliminar_juego: "DELETE /api/videojuegos/:id"
+    }
+  });
+});
+
+// 4. Aplicar el middleware de Rate Limit a todas las rutas que comiencen con '/api/'
+app.use("/api/", apiLimiter);
+
+// 5. Montar el Enrutador Modular de Videojuegos
+app.use("/api/videojuegos", videojuegosRouter);
+
+// 6. Middleware para Rutas Inexistentes (404 Not Found)
+app.use((req, res) => {
+  res.status(404).json({
+    exito: false,
+    error: \`La ruta '\${req.method} \${req.originalUrl}' no existe en el servidor de videojuegos.\`
+  });
+});
+
+// 7. Middleware Global de Manejo de Errores (4 parámetros)
+app.use(errorHandler);
+
+// 8. Iniciar el servidor HTTP si no estamos en modo test
+if (process.env.NODE_ENV !== "test") {
+  app.listen(PORT, () => {
+    console.log(\`\\n=============================================================\`);
+    console.log(\`🎮 Servidor de Videojuegos iniciado en http://localhost:\${PORT}\`);
+    console.log(\`🛡️  Rate Limit activo en /api/videojuegos (Máx: 5 req / min)\`);
+    console.log(\`=============================================================\\n\`);
+  });
+}
+
+export default app;`,
+
+      rateLimiter: `/**
+ * Configuración del Middleware express-rate-limit (helperLimit / rateLimiter)
+ * ---------------------------------------------------------------------------
+ * Este módulo centraliza los limitadores de tasa de solicitudes (Rate Limiters)
+ * para proteger nuestra API REST de Videojuegos contra ataques de Denegación
+ * de Servicio (DoS), fuerza bruta y abuso de peticiones por dirección IP.
+ */
+
+import { rateLimit } from "express-rate-limit";
+
+/**
+ * 1. Limitador General para la API (/api/)
+ * Permite un máximo de 5 solicitudes por minuto por dirección IP.
+ * Al hacer la solicitud #6 dentro del mismo minuto, devuelve HTTP 429.
+ */
+export const apiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minuto (60 segundos * 1000 milisegundos)
+  limit: 5, // Máximo 5 solicitudes (tokens) por ventana de 1 minuto
+  statusCode: 429, // Código HTTP 429: Too Many Requests
+  standardHeaders: "draft-7", // Agrega cabecera estándar RateLimit (IETF draft-7)
+  legacyHeaders: true, // Agrega X-RateLimit-Limit, X-RateLimit-Remaining y X-RateLimit-Reset
+  message: {
+    exito: false,
+    status: 429,
+    error: "Demasiadas solicitudes desde esta IP, por favor intenta de nuevo en un minuto.",
+    detalle: "Has agotado tus 5 tokens disponibles en la ventana actual de 60 segundos."
+  }
+});
+
+/**
+ * 2. Limitador Estricto para Creación de Videojuegos (POST /api/videojuegos)
+ * Protege específicamente la ruta de escritura permitiendo máximo 3 registros por minuto.
+ */
+export const crearJuegoLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minuto
+  limit: 3, // Máximo 3 creaciones por minuto por IP
+  statusCode: 429,
+  standardHeaders: "draft-7",
+  legacyHeaders: true,
+  message: {
+    exito: false,
+    status: 429,
+    error: "Límite de creación alcanzado: Solo puedes registrar 3 videojuegos por minuto.",
+    detalle: "Espera a que se reinicie la ventana de tiempo antes de enviar otro POST."
+  }
+});`,
+
+      routes: `import { Router } from "express";
+import { videojuegos } from "../data/videojuegos.db.js";
+import { validarVideojuego } from "../middlewares/validator.js";
+import { crearJuegoLimiter } from "../middlewares/rateLimiter.js";
+
+/**
+ * Enrutador Modular de Videojuegos (express.Router)
+ * -------------------------------------------------
+ * Gestiona los 5 endpoints CRUD operando sobre el arreglo en memoria.
+ * Se monta en src/app.js bajo el prefijo "/api/videojuegos", protegido
+ * por el middleware apiLimiter (5 solicitudes por minuto por IP).
+ */
+const router = Router();
+
+// 1. [GET] /api/videojuegos - Listar todos los videojuegos del arreglo
+router.get("/", (req, res) => {
+  res.status(200).json({
+    exito: true,
+    total: videojuegos.length,
+    rateLimitInfo: req.rateLimit
+      ? {
+          limiteVentana: req.rateLimit.limit,
+          usados: req.rateLimit.current,
+          tokensRestantes: req.rateLimit.remaining
+        }
+      : undefined,
+    datos: videojuegos
+  });
+});
+
+// 2. [GET] /api/videojuegos/:id - Buscar un videojuego por su ID
+router.get("/:id", (req, res) => {
+  const idBuscado = parseInt(req.params.id, 10);
+
+  if (isNaN(idBuscado)) {
+    return res.status(400).json({
+      exito: false,
+      error: "El parámetro ID debe ser un número entero válido."
+    });
+  }
+
+  const juegoEncontrado = videojuegos.find((j) => j.id === idBuscado);
+
+  if (!juegoEncontrado) {
+    return res.status(404).json({
+      exito: false,
+      error: \`No se encontró ningún videojuego con el ID \${idBuscado}.\`
+    });
+  }
+
+  res.status(200).json({
+    exito: true,
+    mensaje: "Videojuego encontrado exitosamente.",
+    videojuego: juegoEncontrado
+  });
+});
+
+// 3. [POST] /api/videojuegos - Crear un nuevo videojuego en el arreglo
+router.post("/", crearJuegoLimiter, validarVideojuego, (req, res) => {
+  const { titulo, genero, plataforma, precio } = req.body;
+
+  const nuevoId =
+    videojuegos.length > 0
+      ? Math.max(...videojuegos.map((j) => j.id)) + 1
+      : 1;
+
+  const nuevoJuego = {
+    id: nuevoId,
+    titulo: titulo.trim(),
+    genero: genero.trim(),
+    plataforma: plataforma.trim(),
+    precio: Number(precio)
+  };
+
+  videojuegos.push(nuevoJuego);
+
+  res.status(201).json({
+    exito: true,
+    mensaje: "Videojuego agregado exitosamente al catálogo en memoria.",
+    videojuego: nuevoJuego
+  });
+});
+
+// 4. [PUT] /api/videojuegos/:id - Actualizar un videojuego existente
+router.put("/:id", validarVideojuego, (req, res) => {
+  const idBuscado = parseInt(req.params.id, 10);
+
+  if (isNaN(idBuscado)) {
+    return res.status(400).json({
+      exito: false,
+      error: "El parámetro ID debe ser un número entero válido."
+    });
+  }
+
+  const indice = videojuegos.findIndex((j) => j.id === idBuscado);
+
+  if (indice === -1) {
+    return res.status(404).json({
+      exito: false,
+      error: \`No se puede actualizar: No existe videojuego con ID \${idBuscado}.\`
+    });
+  }
+
+  const { titulo, genero, plataforma, precio } = req.body;
+
+  videojuegos[indice] = {
+    id: idBuscado,
+    titulo: titulo.trim(),
+    genero: genero.trim(),
+    plataforma: plataforma.trim(),
+    precio: Number(precio)
+  };
+
+  res.status(200).json({
+    exito: true,
+    mensaje: \`Videojuego con ID \${idBuscado} actualizado correctamente.\`,
+    videojuego: videojuegos[indice]
+  });
+});
+
+// 5. [DELETE] /api/videojuegos/:id - Eliminar un videojuego del arreglo
+router.delete("/:id", (req, res) => {
+  const idBuscado = parseInt(req.params.id, 10);
+
+  if (isNaN(idBuscado)) {
+    return res.status(400).json({
+      exito: false,
+      error: "El parámetro ID debe ser un número entero válido."
+    });
+  }
+
+  const indice = videojuegos.findIndex((j) => j.id === idBuscado);
+
+  if (indice === -1) {
+    return res.status(404).json({
+      exito: false,
+      error: \`No se puede eliminar: No existe videojuego con ID \${idBuscado}.\`
+    });
+  }
+
+  const [juegoEliminado] = videojuegos.splice(indice, 1);
+
+  res.status(200).json({
+    exito: true,
+    mensaje: \`Videojuego con ID \${idBuscado} eliminado del catálogo.\`,
+    videojuego: juegoEliminado
+  });
+});
+
+export default router;`,
+
+      db: `/**
+ * Base de Datos en Memoria: Catálogo de Videojuegos (Arreglo JavaScript Nativo)
+ * -----------------------------------------------------------------------------
+ * En este ejercicio pedagógico no utilizamos un motor de base de datos externo.
+ * Los videojuegos se almacenan en un arreglo mutable en memoria RAM exportado
+ * mediante ECMAScript Modules (ESM).
+ */
+
+export let videojuegos = [
+  {
+    id: 1,
+    titulo: "The Legend of Zelda: Tears of the Kingdom",
+    genero: "Aventura / RPG",
+    plataforma: "Nintendo Switch",
+    precio: 69.99
+  },
+  {
+    id: 2,
+    titulo: "Elden Ring: Shadow of the Erdtree",
+    genero: "Action RPG",
+    plataforma: "Multiplataforma",
+    precio: 59.99
+  },
+  {
+    id: 3,
+    titulo: "Hollow Knight: Silksong",
+    genero: "Metroidvania",
+    plataforma: "PC / Consolas",
+    precio: 29.99
+  },
+  {
+    id: 4,
+    titulo: "Cyberpunk 2077: Phantom Liberty",
+    genero: "RPG / Ciencia Ficción",
+    plataforma: "PC / PS5 / Xbox Series X",
+    precio: 49.99
+  }
+];
+
+export function reiniciarVideojuegos() {
+  videojuegos.length = 0;
+  videojuegos.push(
+    {
+      id: 1,
+      titulo: "The Legend of Zelda: Tears of the Kingdom",
+      genero: "Aventura / RPG",
+      plataforma: "Nintendo Switch",
+      precio: 69.99
+    },
+    {
+      id: 2,
+      titulo: "Elden Ring: Shadow of the Erdtree",
+      genero: "Action RPG",
+      plataforma: "Multiplataforma",
+      precio: 59.99
+    },
+    {
+      id: 3,
+      titulo: "Hollow Knight: Silksong",
+      genero: "Metroidvania",
+      plataforma: "PC / Consolas",
+      precio: 29.99
+    },
+    {
+      id: 4,
+      titulo: "Cyberpunk 2077: Phantom Liberty",
+      genero: "RPG / Ciencia Ficción",
+      plataforma: "PC / PS5 / Xbox Series X",
+      precio: 49.99
+    }
+  );
+  return videojuegos;
+}`,
+
+      validator: `/**
+ * Middleware de Validación de Videojuegos
+ * ---------------------------------------
+ * Verifica que el cuerpo de la petición (req.body) en POST y PUT contenga
+ * los campos obligatorios: titulo, genero, plataforma y precio.
+ */
+
+export function validarVideojuego(req, res, next) {
+  if (!req.body || typeof req.body !== "object") {
+    return res.status(400).json({
+      exito: false,
+      error: "Se requiere enviar un cuerpo JSON válido en la solicitud."
+    });
+  }
+
+  const { titulo, genero, plataforma, precio } = req.body;
+
+  if (!titulo || typeof titulo !== "string" || titulo.trim().length === 0) {
+    return res.status(400).json({
+      exito: false,
+      error: "El campo 'titulo' del videojuego es obligatorio."
+    });
+  }
+
+  if (!genero || typeof genero !== "string" || genero.trim().length === 0) {
+    return res.status(400).json({
+      exito: false,
+      error: "El campo 'genero' es obligatorio (ej: RPG, Acción, Aventura)."
+    });
+  }
+
+  if (!plataforma || typeof plataforma !== "string" || plataforma.trim().length === 0) {
+    return res.status(400).json({
+      exito: false,
+      error: "El campo 'plataforma' es obligatorio (ej: PC, Switch, PS5)."
+    });
+  }
+
+  const precioNum = Number(precio);
+  if (precio === undefined || precio === null || isNaN(precioNum) || precioNum < 0) {
+    return res.status(400).json({
+      exito: false,
+      error: "El campo 'precio' debe ser un número válido mayor o igual a 0."
+    });
+  }
+
+  // Si todos los datos son válidos, continuamos al controlador
+  next();
+}`,
+
+      loggerError: `/**
+ * 1. Middleware de Registro y Auditoría de Tráfico (src/middlewares/logger.js)
+ */
+export function logger(req, res, next) {
+  const timestamp = new Date().toISOString();
+  const metodo = req.method;
+  const url = req.originalUrl || req.url;
+
+  console.log(\`[\${timestamp}] 🎮 \${metodo} -> \${url}\`);
+
+  // Obligatorio invocar next() para continuar hacia el siguiente middleware
+  next();
+}
+
+/**
+ * 2. Middleware Global de Manejo de Errores (src/middlewares/errorHandler.js)
+ * Se distingue en Express por tener exactamente 4 parámetros: (err, req, res, next).
+ */
+export function errorHandler(err, req, res, next) {
+  console.error("🚨 [ERROR CAPTURADO EN EL SERVIDOR]:", err.message || err);
+
+  const codigoEstado = err.statusCode || 500;
+  const mensaje = err.message || "Error interno en el servidor de videojuegos.";
+
+  res.status(codigoEstado).json({
+    exito: false,
+    error: {
+      codigo: codigoEstado,
+      mensaje: mensaje
+    }
+  });
+}`
+    };
+
+    // --- 3. MOTOR DE RESALTADO SINTÁCTICO ESTILO VS CODE DARK+ (TOKENIZER DE PASADA ÚNICA) ---
+    function escapeHtml(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    function highlightVSCode(codeLine) {
+      if (!codeLine || codeLine.trim().length === 0) {
+        return codeLine ? escapeHtml(codeLine) : "&nbsp;";
+      }
+
+      const trimmed = codeLine.trim();
+      if (trimmed.startsWith("//") || trimmed.startsWith("/*") || trimmed.startsWith("*") || trimmed.startsWith("*/")) {
+        return `<span class="hl-cmt">${escapeHtml(codeLine)}</span>`;
+      }
+
+      const tokenRegex = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|(`[^`\\]*(?:\\.[^`\\]*)*`|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|(\b\d+(?:\.\d+)?\b)|(\b(?:import|export|from|default|const|let|var|function|return|if|else|new|typeof|async|await)\b)|(\b(?:Router|Date|Math|Number|JSON|String|Boolean|Array|Object|Promise)\b)|(\b[a-zA-Z_$][a-zA-Z0-9_$]*(?=\s*\())|(\b(?:req|res|next|err|error|app|router|videojuegos|express|rateLimit|limiter|apiLimiter|crearJuegoLimiter|console|PORT|id|titulo|genero|plataforma|precio|precioNum|nuevoId|nuevoJuego|idBuscado|juegoEncontrado|juegoEliminado|indice|timestamp|metodo|url|codigoEstado|mensaje|windowMs|max|limit|statusCode|message|standardHeaders|legacyHeaders|headers)\b)|([{}()\[\]])|(=>|===|!==|==|!=|<=|>=|[=+\-*\/%&|!<>?:,;.])/g;
+
+      let result = "";
+      let lastIndex = 0;
+      let match;
+
+      while ((match = tokenRegex.exec(codeLine)) !== null) {
+        if (match.index > lastIndex) {
+          result += escapeHtml(codeLine.slice(lastIndex, match.index));
+        }
+
+        const [raw, cmt, str, num, kw, typ, fn, param, punc, op] = match;
+        const esc = escapeHtml(raw);
+
+        if (cmt) {
+          result += `<span class="hl-cmt">${esc}</span>`;
+        } else if (str) {
+          result += `<span class="hl-str">${esc}</span>`;
+        } else if (num) {
+          result += `<span class="hl-num">${esc}</span>`;
+        } else if (kw) {
+          result += `<span class="hl-kw">${esc}</span>`;
+        } else if (typ) {
+          result += `<span class="hl-type">${esc}</span>`;
+        } else if (fn) {
+          result += `<span class="hl-fn">${esc}</span>`;
+        } else if (param) {
+          result += `<span class="hl-param">${esc}</span>`;
+        } else if (punc) {
+          result += `<span class="hl-punc">${esc}</span>`;
+        } else if (op) {
+          result += `<span class="hl-op">${esc}</span>`;
+        } else {
+          result += esc;
+        }
+
+        lastIndex = tokenRegex.lastIndex;
+      }
+
+      if (lastIndex < codeLine.length) {
+        result += escapeHtml(codeLine.slice(lastIndex));
+      }
+
+      return result;
+    }
+
+    // Renderizar bloques estáticos estilo VS Code en Slides 5, 6 y 7
+    function renderStaticVSCodeBlocks() {
+      const mapping = {
+        basico: "staticCodeBasico",
+        status429: "staticCodeStatus429",
+        headers: "staticCodeHeaders",
+        apilimiter: "staticCodeApiLimiter",
+        helperFile: "staticCodeHelperFile",
+        helperApp: "staticCodeHelperApp"
+      };
+
+      Object.entries(mapping).forEach(([key, containerId]) => {
+        const el = document.getElementById(containerId);
+        if (!el) return;
+        const lines = (snippetsEstudio[key] || "").split("\n");
+        el.innerHTML = lines
+          .map(
+            (line, idx) =>
+              `<div class="code-row"><span class="code-ln">${idx + 1}</span><span class="code-text">${highlightVSCode(line)}</span></div>`
+          )
+          .join("");
+      });
+    }
+
+    function copiarSnippetEstudio(key) {
+      copiarTexto(snippetsEstudio[key] || "");
+    }
+
+    // --- 4. DICCIONARIO DIDÁCTICO LÍNEA POR LÍNEA (SLIDE 9) ---
+    function obtenerExplicacionLinea(fileKey, ln, codeText) {
+      const clean = codeText.trim();
+
+      if (!clean) {
+        return {
+          title: "Separador Visual (Línea en Blanco)",
+          desc: "Espacio en blanco utilizado para separar bloques lógicos de código y facilitar la lectura en VS Code.",
+          tip: "Un código limpio agrupa importaciones, middlewares y rutas en secciones bien diferenciadas."
+        };
+      }
+      if (clean.startsWith("//") || clean.startsWith("/*") || clean.startsWith("*")) {
+        return {
+          title: "Comentario Explicativo / Documentación JSDoc",
+          desc: "Documenta el propósito técnico del bloque o middleware para otros desarrolladores. Node.js ignora los comentarios al ejecutar el archivo.",
+          tip: "Usa comentarios para explicar el porqué de un límite (ej. 5 peticiones por minuto)."
+        };
+      }
+
+      // Explicaciones específicas para express-rate-limit y app
+      if (clean.includes('import { rateLimit } from "express-rate-limit"')) {
+        return {
+          title: "Importación de express-rate-limit",
+          desc: "Importa la función creadora de middlewares <code>rateLimit</code> desde el paquete oficial instalado con npm.",
+          tip: "Recuerda ejecutar 'npm install express-rate-limit' antes de iniciar el servidor."
+        };
+      }
+      if (clean.includes("import express from")) {
+        return {
+          title: "Importación Principal de Express (ESM)",
+          desc: "Carga el framework Express usando la sintaxis moderna ECMAScript Modules (<code>import</code>).",
+          tip: "En ESM real, express se importa por defecto sin llaves: import express from 'express'."
+        };
+      }
+      if (clean.includes("import { apiLimiter }")) {
+        return {
+          title: "Importación del Middleware de Rate Limit",
+          desc: "Trae la instancia configurada de <code>apiLimiter</code> desde nuestro archivo modular de middlewares.",
+          tip: "Modularizar el limitador en su propio archivo cumple la Sección 3 de la guía."
+        };
+      }
+      if (clean.includes("export const apiLimiter = rateLimit(")) {
+        return {
+          title: "Creación del Middleware apiLimiter",
+          desc: "Invoca <code>rateLimit({...})</code> para construir un middleware que protegerá los endpoints de nuestra API de videojuegos.",
+          tip: "Al usar 'export const', podemos importarlo en app.js o en cualquier archivo de rutas."
+        };
+      }
+      if (clean.includes("export const crearJuegoLimiter = rateLimit(")) {
+        return {
+          title: "Limitador Específico para Creación (POST)",
+          desc: "Crea un segundo limitador más estricto (máximo 3 peticiones por minuto) pensado exclusivamente para proteger la creación de videojuegos.",
+          tip: "Puedes tener múltiples limitadores con distintas reglas en la misma aplicación Express."
+        };
+      }
+      if (clean.includes("windowMs:")) {
+        return {
+          title: "Opción windowMs (Ventana de Tiempo)",
+          desc: "Especifica en <strong>milisegundos</strong> cuánto tiempo el servidor recuerda las solicitudes de cada IP. <code>60 * 1000</code> equivale a 60,000 ms (1 minuto).",
+          tip: "Cuando transcurre el minuto completo, el contador de tokens de la IP vuelve a su valor inicial."
+        };
+      }
+      if (clean.includes("limit: 5") || clean.includes("limit: 3")) {
+        return {
+          title: "Opción limit / max (Tope de Solicitudes)",
+          desc: "Define el número máximo de solicitudes permitidas por dirección IP dentro de la ventana <code>windowMs</code>.",
+          tip: "Cada petición entrante descuenta 1 token. Al llegar a 0, la siguiente petición recibe HTTP 429."
+        };
+      }
+      if (clean.includes("statusCode: 429")) {
+        return {
+          title: "Opción statusCode: 429 (Too Many Requests)",
+          desc: "Establece explícitamente el código de estado HTTP <strong>429</strong> cuando un cliente excede el límite de solicitudes permitido.",
+          tip: "429 es el código estándar RFC 6585 para indicar 'Demasiadas solicitudes'."
+        };
+      }
+      if (clean.includes('standardHeaders: "draft-7"')) {
+        return {
+          title: "Opción standardHeaders ('draft-7')",
+          desc: "Habilita el encabezado estándar moderno <code>RateLimit</code> en la respuesta HTTP para informar al cliente su cuota y tiempo de reinicio.",
+          tip: "Permite que aplicaciones frontend sepan exactamente cuántos segundos esperar."
+        };
+      }
+      if (clean.includes("legacyHeaders: true")) {
+        return {
+          title: "Opción legacyHeaders (X-RateLimit-*)",
+          desc: "Agrega los encabezados clásicos <code>X-RateLimit-Limit</code>, <code>X-RateLimit-Remaining</code> y <code>X-RateLimit-Reset</code> a cada respuesta.",
+          tip: "Muy útil para inspeccionar en Postman o con 'curl -i' cuántos tokens quedan."
+        };
+      }
+      if (clean.includes("message: {") || clean.includes("Demasiadas solicitudes")) {
+        return {
+          title: "Opción message (Respuesta Personalizada 429)",
+          desc: "Define el cuerpo JSON que <code>express-rate-limit</code> enviará automáticamente cuando el jugador supere el límite de peticiones.",
+          tip: "Enviar un objeto JSON mantiene consistencia con el resto de respuestas de tu API REST."
+        };
+      }
+      if (clean.includes('app.use("/api/", apiLimiter)')) {
+        return {
+          title: "Montaje del Rate Limiter en '/api/'",
+          desc: "Aplica el middleware <code>apiLimiter</code> a todas las rutas que comiencen con <code>/api/</code> (como <code>/api/videojuegos</code>), dejando libre la ruta raíz <code>/</code>.",
+          tip: "Se ubica estratégicamente antes de montar videojuegosRouter para interceptar abusos a tiempo."
+        };
+      }
+      if (clean.includes('app.use("/api/videojuegos", videojuegosRouter)')) {
+        return {
+          title: "Montaje del Enrutador de Videojuegos",
+          desc: "Conecta el módulo <code>videojuegosRouter</code> al prefijo <code>/api/videojuegos</code>.",
+          tip: "Toda solicitud que llegue aquí ya pasó primero por el filtro de apiLimiter."
+        };
+      }
+      if (clean.includes("req.rateLimit")) {
+        return {
+          title: "Lectura de Metadatos en req.rateLimit",
+          desc: "<code>express-rate-limit</code> inyecta el objeto <code>req.rateLimit</code> con el límite total, peticiones usadas y tokens restantes de la IP actual.",
+          tip: "Puedes personalizar el nombre de esta propiedad con la opción 'requestPropertyName'."
+        };
+      }
+      if (clean.includes('router.post("/", crearJuegoLimiter, validarVideojuego')) {
+        return {
+          title: "Cadena de Middlewares en Ruta POST",
+          desc: "Encadena dos middlewares específicos en la ruta de creación: primero verifica el límite de tasa con <code>crearJuegoLimiter</code> y luego valida los campos con <code>validarVideojuego</code>.",
+          tip: "Si el cliente excede el límite o envía datos inválidos, el controlador ni siquiera se ejecuta."
+        };
+      }
+      if (clean.includes("export let videojuegos = [")) {
+        return {
+          title: "Arreglo de Videojuegos en Memoria RAM",
+          desc: "Declara y exporta el arreglo que actúa como nuestra base de datos en memoria sin requerir motores SQL o NoSQL externos.",
+          tip: "Sobre este arreglo operan los métodos .find(), .push(), .findIndex() y .splice()."
+        };
+      }
+      if (clean.includes("videojuegos.find(")) {
+        return {
+          title: "Búsqueda en el Arreglo con .find()",
+          desc: "Recorre el arreglo en memoria y devuelve el primer videojuego cuyo <code>id</code> coincida con <code>idBuscado</code>.",
+          tip: "Si no existe coincidencia, devuelve undefined y respondemos con 404 Not Found."
+        };
+      }
+      if (clean.includes("videojuegos.push(")) {
+        return {
+          title: "Inserción en Memoria con .push()",
+          desc: "Agrega el nuevo objeto videojuego al final del arreglo en memoria RAM.",
+          tip: "Acompañamos la creación con el código HTTP 201 Created."
+        };
+      }
+      if (clean.includes("videojuegos.splice(")) {
+        return {
+          title: "Eliminación en Memoria con .splice()",
+          desc: "Extrae y elimina 1 elemento del arreglo en la posición <code>indice</code> encontrada por <code>findIndex()</code>.",
+          tip: "Desestructuramos [juegoEliminado] para mostrárselo al usuario en la confirmación."
+        };
+      }
+      if (clean.includes("next()")) {
+        return {
+          title: "Llamada a next() (Continuar Cadena)",
+          desc: "Transfiere el control al siguiente middleware o controlador de ruta en la tubería de Express.",
+          tip: "Si un middleware no responde ni llama a next(), la solicitud quedará colgada."
+        };
+      }
+
+      return {
+        title: `Línea ${ln}: ${clean.substring(0, 38)}${clean.length > 38 ? "..." : ""}`,
+        desc: `Instrucción de estructura, configuración o flujo de datos dentro del archivo <code>${fileKey}</code> en ECMAScript Modules.`,
+        tip: "Haz clic en las líneas de configuración de rateLimit, rutas o validaciones para ver más detalles."
+      };
+    }
+
+    // --- 5. RENDERIZADO DEL VISOR INTERACTIVO LÍNEA A LÍNEA ---
+    let currentActiveFile = "app";
+
+    const breadcrumbsMap = {
+      app: "src > app.js",
+      rateLimiter: "src > middlewares > rateLimiter.js",
+      routes: "src > routes > videojuegos.routes.js",
+      db: "src > data > videojuegos.db.js",
+      validator: "src > middlewares > validator.js",
+      loggerError: "src > middlewares > logger.js & errorHandler.js"
+    };
+
+    function renderCodeFile(fileKey) {
+      currentActiveFile = fileKey;
+      const rawText = fileCodesRaw[fileKey] || "";
+      const lines = rawText.split("\n");
+      const panel = document.getElementById("codeLinesPanel");
+      panel.innerHTML = "";
+
+      document.getElementById("vscodeBreadcrumbs").innerHTML =
+        `<span>campuslands-express-ratelimit-interactivo</span> &gt; <span class="active-crumb">${breadcrumbsMap[fileKey]}</span>`;
+
+      lines.forEach((codeLine, index) => {
+        const ln = index + 1;
+        const row = document.createElement("div");
+        row.className = "code-row" + (index === 0 ? " active" : "");
+        row.innerHTML = `<span class="code-ln">${ln}</span><span class="code-text">${highlightVSCode(codeLine)}</span>`;
+        row.onclick = () => {
+          document.querySelectorAll("#codeLinesPanel .code-row").forEach(r => r.classList.remove("active"));
+          row.classList.add("active");
+          updateCodeDetail(fileKey, ln, codeLine);
+        };
+        panel.appendChild(row);
+      });
+
+      if (lines.length > 0) {
+        updateCodeDetail(fileKey, 1, lines[0]);
+      }
+    }
+
+    function updateCodeDetail(fileKey, ln, codeLine) {
+      const info = obtenerExplicacionLinea(fileKey, ln, codeLine);
+      document.getElementById("detailBadge").textContent = `${fileKey.toUpperCase()} : LÍNEA ${ln}`;
+      document.getElementById("detailHeading").textContent = info.title;
+      document.getElementById("detailBody").innerHTML = info.desc;
+      document.getElementById("detailTip").innerHTML = `💡 <strong>Consejo:</strong> ${info.tip}`;
+    }
+
+    function copiarArchivoActivo() {
+      copiarTexto(fileCodesRaw[currentActiveFile] || "");
+    }
+
+    document.querySelectorAll(".vscode-tab").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".vscode-tab").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        renderCodeFile(btn.dataset.file);
+      });
+    });
+
+    // --- 6. ANIMACIÓN INTERACTIVA DEL DIAGRAMA DE TOKENS (SLIDE 2) ---
+    function animarDiagramaTokens() {
+      const rows = ["diagRow1", "diagRow2", "diagRow3", "diagRow4"];
+      const badge = document.getElementById("diagClientBadge");
+      const states = [
+        { row: "diagRow1", text: "03:01:00 ✅ Tokens: 2 / 3", color: "#4ade80" },
+        { row: "diagRow2", text: "03:01:20 ✅ Tokens: 1 / 3", color: "#fbbf24" },
+        { row: "diagRow3", text: "03:01:40 ✅ Tokens: 0 / 3", color: "#f97316" },
+        { row: "diagRow4", text: "03:01:55 ❌ 0 Tokens (429 Stop)", color: "#f87171" }
+      ];
+
+      rows.forEach(id => document.getElementById(id).classList.remove("highlight-step"));
+      badge.textContent = "Tokens iniciales: 3 / 3";
+      badge.style.color = "#4ade80";
+
+      states.forEach((st, idx) => {
+        setTimeout(() => {
+          rows.forEach(id => document.getElementById(id).classList.remove("highlight-step"));
+          document.getElementById(st.row).classList.add("highlight-step");
+          badge.textContent = st.text;
+          badge.style.color = st.color;
+        }, (idx + 1) * 750);
+      });
+    }
+
+    function toggleOriginalDiagram() {
+      const wrap = document.getElementById("originalDiagramWrap");
+      wrap.style.display = wrap.style.display === "none" ? "block" : "none";
+    }
+
+    // --- 7. FILTRO DE LAS 14 OPCIONES (SLIDE 4) ---
+    function filtrarTablaOpciones() {
+      const q = document.getElementById("inputSearchOptions").value.toLowerCase().trim();
+      const rows = document.querySelectorAll("#tablaOpcionesRateLimit tbody tr");
+      let visible = 0;
+
+      rows.forEach(tr => {
+        const text = tr.textContent.toLowerCase();
+        const match = !q || text.includes(q);
+        tr.style.display = match ? "" : "none";
+        if (match) visible++;
+      });
+
+      document.getElementById("optionsCountLabel").textContent = `Mostrando ${visible} / 14 opciones oficiales`;
+    }
+
+    // --- 8. SIMULADOR INTERACTIVO EN VIVO: SANDBOX RATE LIMIT + ARREGLO DE VIDEOJUEGOS (SLIDE 11) ---
+    let simVideojuegos = [
+      { id: 1, titulo: "The Legend of Zelda: Tears of the Kingdom", genero: "Aventura / RPG", plataforma: "Nintendo Switch", precio: 69.99 },
+      { id: 2, titulo: "Elden Ring: Shadow of the Erdtree", genero: "Action RPG", plataforma: "Multiplataforma", precio: 59.99 },
+      { id: 3, titulo: "Hollow Knight: Silksong", genero: "Metroidvania", plataforma: "PC / Consolas", precio: 29.99 },
+      { id: 4, titulo: "Cyberpunk 2077: Phantom Liberty", genero: "RPG / Ciencia Ficción", plataforma: "PC / PS5 / Xbox Series X", precio: 49.99 }
+    ];
+
+    let maxLimitTokens = 5;
+    let remainingTokens = 5;
+    let windowSecondsLeft = 60;
+
+    setInterval(() => {
+      windowSecondsLeft--;
+      if (windowSecondsLeft <= 0) {
+        remainingTokens = maxLimitTokens;
+        windowSecondsLeft = 60;
+        renderRateLimitHUD();
+      }
+      const timerEl = document.getElementById("hudTimerText");
+      if (timerEl) timerEl.textContent = `${windowSecondsLeft}s`;
+    }, 1000);
+
+    function renderRateLimitHUD() {
+      const pillsEl = document.getElementById("hudTokenPills");
+      const textEl = document.getElementById("hudTokensText");
+      if (!pillsEl || !textEl) return;
+
+      pillsEl.innerHTML = "";
+      for (let i = 1; i <= maxLimitTokens; i++) {
+        const pill = document.createElement("span");
+        const isAvailable = i <= remainingTokens;
+        pill.className = "token-pill" + (isAvailable ? "" : " spent");
+        pill.textContent = isAvailable ? "⚡" : "✕";
+        pillsEl.appendChild(pill);
+      }
+
+      textEl.textContent = `${remainingTokens} / ${maxLimitTokens} tokens disponibles`;
+      textEl.style.color = remainingTokens > 0 ? "#4ade80" : "#f87171";
+    }
+
+    function cambiarConfigLimitador() {
+      maxLimitTokens = parseInt(document.getElementById("selMaxLimit").value, 10);
+      remainingTokens = maxLimitTokens;
+      windowSecondsLeft = 60;
+      renderRateLimitHUD();
+      mostrarToast(`⚙️ Limitador ajustado a max: ${maxLimitTokens} solicitudes por minuto`);
+    }
+
+    function recargarTokensAhora() {
+      remainingTokens = maxLimitTokens;
+      windowSecondsLeft = 60;
+      renderRateLimitHUD();
+      mostrarToast("⚡ Ventana windowMs reiniciada: todos los tokens restaurados");
+    }
+
+    function actualizarTablaVideojuegos() {
+      const tbody = document.getElementById("tbodyVideojuegos");
+      if (!tbody) return;
+      tbody.innerHTML = "";
+      document.getElementById("juegosCountBadge").textContent = `Total: ${simVideojuegos.length} videojuegos`;
+
+      if (simVideojuegos.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: var(--text-dim);">No hay videojuegos en el arreglo en memoria.</td></tr>`;
+        return;
+      }
+
+      simVideojuegos.forEach(j => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td style="font-family: var(--font-mono); font-weight: 800; color: var(--campus-cyan);">${j.id}</td>
+          <td style="font-weight: 700; color: #fff;">${escapeHtml(j.titulo)}</td>
+          <td><span style="font-size: 0.78rem; background: rgba(56,189,248,0.12); color: #38bdf8; padding: 0.2rem 0.5rem; border-radius: 6px;">${escapeHtml(j.genero)}</span></td>
+          <td style="color: var(--text-muted); font-size: 0.84rem;">${escapeHtml(j.plataforma)}</td>
+          <td style="font-family: var(--font-mono); font-weight: 700; color: #4ade80;">$${Number(j.precio).toFixed(2)}</td>
+          <td>
+            <button class="btn-preset" style="padding: 0.2rem 0.55rem; font-size: 0.73rem; color: #f87171;" onclick="eliminarJuegoDirecto(${j.id})">Eliminar</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function setPreset(key) {
+      const m = document.getElementById("sandboxMethod");
+      const u = document.getElementById("sandboxUrl");
+      const b = document.getElementById("sandboxBody");
+
+      if (key === "GET_ALL") {
+        m.value = "GET";
+        u.value = "/api/videojuegos";
+        b.value = "";
+      } else if (key === "GET_ONE") {
+        m.value = "GET";
+        u.value = "/api/videojuegos/1";
+        b.value = "";
+      } else if (key === "POST_OK") {
+        m.value = "POST";
+        u.value = "/api/videojuegos";
+        b.value = JSON.stringify({
+          titulo: "God of War Ragnarök",
+          genero: "Acción / Aventura",
+          plataforma: "PlayStation 5 / PC",
+          precio: 59.99
+        }, null, 2);
+      } else if (key === "PUT_OK") {
+        m.value = "PUT";
+        u.value = "/api/videojuegos/2";
+        b.value = JSON.stringify({
+          titulo: "Elden Ring: Shadow of the Erdtree GOTY",
+          genero: "Action RPG",
+          plataforma: "Multiplataforma",
+          precio: 49.99
+        }, null, 2);
+      } else if (key === "DELETE_OK") {
+        m.value = "DELETE";
+        u.value = "/api/videojuegos/3";
+        b.value = "";
+      }
+    }
+
+    function ejecutarPeticionSandbox() {
+      const metodo = document.getElementById("sandboxMethod").value;
+      const url = document.getElementById("sandboxUrl").value.trim();
+      const rawBody = document.getElementById("sandboxBody").value.trim();
+      const badge = document.getElementById("responseStatusBadge");
+      const output = document.getElementById("sandboxOutput");
+      const headersBox = document.getElementById("sandboxHeaders");
+      const meta = document.getElementById("sandboxMeta");
+      const timeStr = new Date().toLocaleTimeString();
+
+      // 1. Verificar Middleware express-rate-limit si la ruta empieza con /api/
+      if (url.startsWith("/api/")) {
+        if (remainingTokens <= 0) {
+          badge.className = "badge-status s429";
+          badge.textContent = "429 Too Many Requests";
+          headersBox.innerHTML = `
+            <span style="color:#fca5a5;">X-RateLimit-Limit: <strong>${maxLimitTokens}</strong></span>
+            <span style="color:#ef4444;">X-RateLimit-Remaining: <strong>0</strong></span>
+            <span style="color:#fbbf24;">Retry-After: <strong>${windowSecondsLeft}s</strong></span>
+          `;
+          output.textContent = JSON.stringify({
+            exito: false,
+            status: 429,
+            error: "Demasiadas solicitudes desde esta IP, por favor intenta de nuevo en un minuto.",
+            detalle: `Has agotado tus ${maxLimitTokens} tokens disponibles. Reinicio en ${windowSecondsLeft} segundos.`
+          }, null, 2);
+          output.style.color = "#f87171";
+          meta.textContent = `[${timeStr}] 🛑 BLOQUEADO POR EXPRESS-RATE-LIMIT: HTTP 429 Too Many Requests`;
+          return;
+        }
+
+        // Descontar 1 token
+        remainingTokens--;
+        renderRateLimitHUD();
+        headersBox.innerHTML = `
+          <span>X-RateLimit-Limit: <strong>${maxLimitTokens}</strong></span>
+          <span style="color:#4ade80;">X-RateLimit-Remaining: <strong>${remainingTokens}</strong></span>
+          <span>RateLimit: <strong>limit=${maxLimitTokens}, remaining=${remainingTokens}, reset=${windowSecondsLeft}</strong></span>
+        `;
+      }
+
+      // 2. Parsear JSON para POST/PUT
+      let parsed = null;
+      if (metodo === "POST" || metodo === "PUT") {
+        try {
+          parsed = JSON.parse(rawBody);
+        } catch (e) {
+          return mostrarRespuestaSandbox(400, "Bad Request", { exito: false, error: "Cuerpo JSON malformado." }, "#fbbf24", timeStr);
+        }
+      }
+
+      // 3. Procesar Rutas
+      if (url === "/api/videojuegos" && metodo === "GET") {
+        mostrarRespuestaSandbox(200, "OK", {
+          exito: true,
+          total: simVideojuegos.length,
+          rateLimitInfo: {
+            limiteVentana: maxLimitTokens,
+            usados: maxLimitTokens - remainingTokens,
+            tokensRestantes: remainingTokens
+          },
+          datos: simVideojuegos
+        }, "#38bdf8", timeStr);
+      } else if (url.startsWith("/api/videojuegos/") && metodo === "GET") {
+        const id = parseInt(url.replace("/api/videojuegos/", ""), 10);
+        const found = simVideojuegos.find(j => j.id === id);
+        if (!found) {
+          return mostrarRespuestaSandbox(404, "Not Found", { exito: false, error: `No existe videojuego con ID ${id}.` }, "#f87171", timeStr);
+        }
+        mostrarRespuestaSandbox(200, "OK", { exito: true, videojuego: found }, "#38bdf8", timeStr);
+      } else if (url === "/api/videojuegos" && metodo === "POST") {
+        if (!parsed || !parsed.titulo || !parsed.genero || !parsed.plataforma || parsed.precio === undefined) {
+          return mostrarRespuestaSandbox(400, "Bad Request", { exito: false, error: "Faltan campos obligatorios (titulo, genero, plataforma, precio)." }, "#fbbf24", timeStr);
+        }
+        const nuevoId = simVideojuegos.length > 0 ? Math.max(...simVideojuegos.map(j => j.id)) + 1 : 1;
+        const nuevo = {
+          id: nuevoId,
+          titulo: String(parsed.titulo).trim(),
+          genero: String(parsed.genero).trim(),
+          plataforma: String(parsed.plataforma).trim(),
+          precio: Number(parsed.precio)
+        };
+        simVideojuegos.push(nuevo);
+        actualizarTablaVideojuegos();
+        mostrarRespuestaSandbox(201, "Created", { exito: true, mensaje: "Videojuego agregado al arreglo en memoria.", videojuego: nuevo }, "#34d399", timeStr);
+      } else if (url.startsWith("/api/videojuegos/") && metodo === "PUT") {
+        const id = parseInt(url.replace("/api/videojuegos/", ""), 10);
+        const idx = simVideojuegos.findIndex(j => j.id === id);
+        if (idx === -1) {
+          return mostrarRespuestaSandbox(404, "Not Found", { exito: false, error: `No existe videojuego con ID ${id}.` }, "#f87171", timeStr);
+        }
+        simVideojuegos[idx] = {
+          id,
+          titulo: String(parsed.titulo || simVideojuegos[idx].titulo).trim(),
+          genero: String(parsed.genero || simVideojuegos[idx].genero).trim(),
+          plataforma: String(parsed.plataforma || simVideojuegos[idx].plataforma).trim(),
+          precio: Number(parsed.precio ?? simVideojuegos[idx].precio)
+        };
+        actualizarTablaVideojuegos();
+        mostrarRespuestaSandbox(200, "OK", { exito: true, mensaje: `Videojuego ${id} actualizado.`, videojuego: simVideojuegos[idx] }, "#38bdf8", timeStr);
+      } else if (url.startsWith("/api/videojuegos/") && metodo === "DELETE") {
+        const id = parseInt(url.replace("/api/videojuegos/", ""), 10);
+        const idx = simVideojuegos.findIndex(j => j.id === id);
+        if (idx === -1) {
+          return mostrarRespuestaSandbox(404, "Not Found", { exito: false, error: `No existe videojuego con ID ${id}.` }, "#f87171", timeStr);
+        }
+        const [eliminado] = simVideojuegos.splice(idx, 1);
+        actualizarTablaVideojuegos();
+        mostrarRespuestaSandbox(200, "OK", { exito: true, mensaje: `Videojuego ${id} eliminado.`, videojuego: eliminado }, "#38bdf8", timeStr);
+      } else {
+        mostrarRespuestaSandbox(404, "Not Found", { exito: false, error: `Ruta ${metodo} ${url} no encontrada.` }, "#f87171", timeStr);
+      }
+    }
+
+    function mostrarRespuestaSandbox(status, label, payload, color, timeStr) {
+      const badge = document.getElementById("responseStatusBadge");
+      const output = document.getElementById("sandboxOutput");
+      const meta = document.getElementById("sandboxMeta");
+
+      badge.className = "badge-status s" + status;
+      badge.textContent = `${status} ${label}`;
+      output.textContent = JSON.stringify(payload, null, 2);
+      output.style.color = color;
+      meta.textContent = `[${timeStr}] ✅ Solicitud procesada (${status} ${label}) — Tokens restantes: ${remainingTokens}/${maxLimitTokens}`;
+    }
+
+    function simularAtaqueRafaga() {
+      setPreset("GET_ALL");
+      const totalDisparos = remainingTokens + 1;
+      for (let i = 0; i < totalDisparos; i++) {
+        ejecutarPeticionSandbox();
+      }
+      mostrarToast("🚨 ¡Ráfaga DoS enviada! Se agotaron los tokens y saltó el error 429 Too Many Requests");
+    }
+
+    function eliminarJuegoDirecto(id) {
+      document.getElementById("sandboxMethod").value = "DELETE";
+      document.getElementById("sandboxUrl").value = `/api/videojuegos/${id}`;
+      document.getElementById("sandboxBody").value = "";
+      ejecutarPeticionSandbox();
+    }
+
+    function reiniciarCatalogoMemoria() {
+      simVideojuegos = [
+        { id: 1, titulo: "The Legend of Zelda: Tears of the Kingdom", genero: "Aventura / RPG", plataforma: "Nintendo Switch", precio: 69.99 },
+        { id: 2, titulo: "Elden Ring: Shadow of the Erdtree", genero: "Action RPG", plataforma: "Multiplataforma", precio: 59.99 },
+        { id: 3, titulo: "Hollow Knight: Silksong", genero: "Metroidvania", plataforma: "PC / Consolas", precio: 29.99 },
+        { id: 4, titulo: "Cyberpunk 2077: Phantom Liberty", genero: "RPG / Ciencia Ficción", plataforma: "PC / PS5 / Xbox Series X", precio: 49.99 }
+      ];
+      actualizarTablaVideojuegos();
+      mostrarToast("🔄 Arreglo de videojuegos restaurado a los 4 títulos iniciales");
+    }
+
+    // --- 9. UTILIDADES Y NAVEGACIÓN DE DIAPOSITIVAS ---
+    function copiarTexto(texto) {
+      navigator.clipboard.writeText(texto).then(() => {
+        mostrarToast("📋 Código copiado al portapapeles");
+      }).catch(() => {
+        mostrarToast("⚠️ No se pudo copiar automáticamente");
+      });
+    }
+
+    function mostrarToast(msg) {
+      const toast = document.getElementById("toastMsg");
+      toast.textContent = msg;
+      toast.style.display = "block";
+      setTimeout(() => { toast.style.display = "none"; }, 2600);
+    }
+
+    let currentStep = 1;
+    const totalSteps = 11;
+
+    function goToStep(step) {
+      if (step < 1 || step > totalSteps) return;
+      currentStep = step;
+
+      document.querySelectorAll(".slide-item").forEach(s => {
+        s.classList.toggle("active", parseInt(s.dataset.step, 10) === currentStep);
+      });
+
+      document.getElementById("dockCounter").textContent = `${currentStep} / ${totalSteps}`;
+      document.getElementById("progressBar").style.width = `${(currentStep / totalSteps) * 100}%`;
+
+      document.getElementById("btnPrev").disabled = currentStep === 1;
+      document.getElementById("btnNext").disabled = currentStep === totalSteps;
+
+      document.querySelectorAll(".toc-item").forEach((it, idx) => {
+        it.classList.toggle("current", idx + 1 === currentStep);
+      });
+
+      document.getElementById("modalTOC").classList.remove("active");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    document.getElementById("btnPrev").onclick = () => goToStep(currentStep - 1);
+    document.getElementById("btnNext").onclick = () => goToStep(currentStep + 1);
+
+    document.addEventListener("keydown", (e) => {
+      if (["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName)) return;
+      if (e.key === "ArrowRight") goToStep(currentStep + 1);
+      else if (e.key === "ArrowLeft") goToStep(currentStep - 1);
+      else if (e.key.toLowerCase() === "m") toggleViewMode();
+      else if (e.key.toLowerCase() === "t") toggleTOCModal();
+      else if (e.key === "Escape") document.getElementById("modalTOC").classList.remove("active");
+    });
+
+    function toggleViewMode() {
+      const body = document.body;
+      const isSlides = body.classList.contains("mode-slides");
+      if (isSlides) {
+        body.classList.remove("mode-slides");
+        body.classList.add("mode-doc");
+        document.getElementById("modeIcon").textContent = "📽️";
+        document.getElementById("modeLabel").textContent = "Modo Diapositivas";
+        mostrarToast("📖 Modo Lectura Continua activado (todas las secciones visibles)");
+      } else {
+        body.classList.remove("mode-doc");
+        body.classList.add("mode-slides");
+        document.getElementById("modeIcon").textContent = "📖";
+        document.getElementById("modeLabel").textContent = "Modo Lectura";
+        goToStep(currentStep);
+        mostrarToast("📽️ Modo Diapositivas Paso a Paso activado");
+      }
+    }
+
+    function toggleTOCModal() {
+      document.getElementById("modalTOC").classList.toggle("active");
+    }
+
+    document.getElementById("btnToggleMode").onclick = toggleViewMode;
+    document.getElementById("btnOpenTOC").onclick = toggleTOCModal;
+    document.getElementById("btnCloseTOC").onclick = () => document.getElementById("modalTOC").classList.remove("active");
+
+    window.addEventListener("DOMContentLoaded", () => {
+      renderStaticVSCodeBlocks();
+      renderCodeFile("app");
+      renderRateLimitHUD();
+      actualizarTablaVideojuegos();
+      goToStep(1);
+    });
+  </script>
+</body>
+</html>
