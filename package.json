@@ -1,0 +1,30 @@
+{
+  "name": "campuslands-express-ratelimit-interactivo",
+  "version": "1.0.0",
+  "description": "Ejercicio práctico e interactivo de Express.js con express-rate-limit, middlewares y CRUD de Videojuegos en memoria (ESM) para Campuslands",
+  "type": "module",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "node --watch src/app.js",
+    "test": "NODE_ENV=test node test/test-api.js"
+  },
+  "keywords": [
+    "campuslands",
+    "express",
+    "express-rate-limit",
+    "rate-limit",
+    "middleware",
+    "videojuegos",
+    "nodejs",
+    "esm",
+    "api-rest",
+    "educativo"
+  ],
+  "author": "Andre Lopez <andrelopez012@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0"
+  }
+}
